@@ -64,7 +64,7 @@ static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
 static Client *head;
 static Display *d;
 static int clients_n = 0;
-static int sh, sw;
+static int sh, sw; // screen-width and -height
 static volatile sig_atomic_t running = True;
 static Window r; // root-window
 
