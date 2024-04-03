@@ -26,6 +26,11 @@ other programs. The minimum recommendations to make xswm usable are:
 - Application-Launcher like [dmenu](https://tools.suckless.org/dmenu/)
 - Window-Switcher like [alttab](https://github.com/sagb/alttab/)
 
+Other useful programs might be:
+
+- [xhidecursor](https://github.com/astier/xhidecursor) to hide the cursor when
+  typing and unhide it when moving the mouse
+
 No status-bar, multi-monitor or -desktop support.
 
 ## Remote-Control
