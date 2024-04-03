@@ -1,4 +1,4 @@
-PREFIX ?= $(HOME)/.local/bin
+PREFIX ?= /usr/local/bin
 
 CFLAGS += -std=c99 -march=native -O3 -pipe
 CFLAGS += -Wall

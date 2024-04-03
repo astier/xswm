@@ -11,16 +11,8 @@ it is necessary to make applications and windows work properly.
 
 ## Installation
 
-Installs by default under `$HOME/.local/bin`
-
 ```sh
 make install
-```
-
-To install somewhere else set `PREFIX` to the preferred installation-directory.
-
-```sh
-make install PREFIX=/some/where/else
 ```
 
 ## Configuration
