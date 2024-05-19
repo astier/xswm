@@ -158,7 +158,7 @@ void send_event(const Window w, const Atom protocol) {
 
 void set_state(const Window w, const long state) {
     XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
-        PropModeReplace, (unsigned char *) (long []) {state, None}, 1);
+        PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
 }
 
 void signal_handler(const int signal) {
