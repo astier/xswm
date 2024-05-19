@@ -136,6 +136,16 @@ void resize(const Window w) {
 }
 
 void send_event(const Window w, const Atom protocol) {
+    Atom *protocols;
+    int n;
+    Bool protocol_exists = False;
+    if (XGetWMProtocols(d, w, &protocols, &n)) {
+        while (!protocol_exists && n--)
+            protocol_exists = protocols[n] == protocol;
+        XFree(protocols);
+    }
+    if (!protocol_exists)
+        return;
     XEvent e;
     e.type = ClientMessage;
     e.xclient.window = w;
