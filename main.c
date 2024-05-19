@@ -13,6 +13,7 @@ enum {
     CloseWindow,
     CurrentDesktop,
     DesktopViewport,
+    FrameExtents,
     NumberOfDesktops,
     Supported,
     SupportingWMCheck,
@@ -92,6 +93,8 @@ void add(const Window w) {
     set_state(w, NormalState);
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
+    XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {0, 0, 0, 0}, 4);
     resize(w);
     XMapWindow(d, w);
     focus(w);
@@ -305,6 +308,7 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[CloseWindow] = "_NET_CLOSE_WINDOW";
     net_atom_names[CurrentDesktop] = "_NET_CURRENT_DESKTOP";
     net_atom_names[DesktopViewport] = "_NET_DESKTOP_VIEWPORT";
+    net_atom_names[FrameExtents] = "_NET_FRAME_EXTENTS";
     net_atom_names[NumberOfDesktops] = "_NET_NUMBER_OF_DESKTOPS";
     net_atom_names[Supported] = "_NET_SUPPORTED";
     net_atom_names[SupportingWMCheck] = "_NET_SUPPORTING_WM_CHECK";
