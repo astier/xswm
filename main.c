@@ -138,12 +138,12 @@ void resize(const Window w) {
 void send_event(const Window w, const Atom protocol) {
     Atom *protocols;
     int n;
+    if (!XGetWMProtocols(d, w, &protocols, &n))
+        return;
     Bool protocol_exists = False;
-    if (XGetWMProtocols(d, w, &protocols, &n)) {
-        while (!protocol_exists && n--)
-            protocol_exists = protocols[n] == protocol;
-        XFree(protocols);
-    }
+    while (!protocol_exists && n--)
+        protocol_exists = protocols[n] == protocol;
+    XFree(protocols);
     if (!protocol_exists)
         return;
     XEvent e;
