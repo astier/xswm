@@ -220,34 +220,33 @@ void client_message(const XClientMessageEvent *e) {
 }
 
 void configure_notify(const XConfigureEvent *e) {
-    if (e->window != r || (sh == e->height && sw == e->width))
-        return;
-    sh = e->height;
-    sw = e->width;
-    for (Client *c = head; c; c = c->next)
-        resize(c->w);
+    const Window w = e->window;
+    const int wh = e->height;
+    const int ww = e->width;
+    if (w == r && (wh != sh || ww != sw)) {
+        sh = wh;
+        sw = ww;
+        for (Client *c = head; c; c = c->next)
+            resize(c->w);
+    } else if (get_client(w)) {
+        if (e->border_width != 0)
+            XSetWindowBorderWidth(d, w, 0);
+        if (e->x != 0 || e->y != 0 || wh != sh || ww != sw)
+            resize(w);
+    }
 }
 
 void configure_request(const XConfigureRequestEvent *e) {
     const Window w = e->window;
     XWindowChanges wc;
-    if (!get_client(w)) {
-        wc.x = e->x;
-        wc.y = e->y;
-        wc.width = e->width;
-        wc.height = e->height;
-        wc.border_width = e->border_width;
-        wc.sibling = e->above;
-        wc.stack_mode = e->detail;
-        XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
-    } else {
-        wc.x = 0;
-        wc.y = 0;
-        wc.width = sw;
-        wc.height = sh;
-        wc.border_width = 0;
-        XConfigureWindow(d, w, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
-    }
+    wc.x = e->x;
+    wc.y = e->y;
+    wc.width = e->width;
+    wc.height = e->height;
+    wc.border_width = e->border_width;
+    wc.sibling = e->above;
+    wc.stack_mode = e->detail;
+    XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
 }
 
 void property_notify(const XPropertyEvent *e) {
