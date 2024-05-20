@@ -95,6 +95,7 @@ void add(const Window w) {
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {0, 0, 0, 0}, 4);
+    XSetWindowBorderWidth(d, w, 0);
     resize(w);
     XMapWindow(d, w);
     focus(w);
@@ -229,17 +230,24 @@ void configure_notify(const XConfigureEvent *e) {
 
 void configure_request(const XConfigureRequestEvent *e) {
     const Window w = e->window;
-    if (!get_client(w))
-        return;
-    XWindowChanges c;
-    c.x = 0;
-    c.y = 0;
-    c.width = sw;
-    c.height = sh;
-    c.border_width = 0;
-    c.sibling = e->above;
-    c.stack_mode = e->detail;
-    XConfigureWindow(d, w, (unsigned int) e->value_mask, &c);
+    XWindowChanges wc;
+    if (!get_client(w)) {
+        wc.x = e->x;
+        wc.y = e->y;
+        wc.width = e->width;
+        wc.height = e->height;
+        wc.border_width = e->border_width;
+        wc.sibling = e->above;
+        wc.stack_mode = e->detail;
+        XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
+    } else {
+        wc.x = 0;
+        wc.y = 0;
+        wc.width = sw;
+        wc.height = sh;
+        wc.border_width = 0;
+        XConfigureWindow(d, w, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &wc);
+    }
 }
 
 void property_notify(const XPropertyEvent *e) {
