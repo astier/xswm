@@ -3,7 +3,7 @@
 [xswm](https://github.com/astier/xswm) is a stacking and non-reparenting
 window-manager for X and has only one task. Open every window maximized. Zero
 configuration required. Due to its limited scope it is very minimal and
-performant (\~320 SLOC). No built-in hotkeys, statusbar, tags, etc. Just a
+performant (\~330 SLOC). No built-in hotkeys, statusbar, tags, etc. Just a
 window-manager. Tries to be
 [ICCCM](https://www.x.org/releases/current/doc/xorg-docs/icccm/icccm.html) and
 [EWMH](https://specifications.freedesktop.org/wm-spec/latest/) compliant insofar
@@ -41,4 +41,5 @@ Currently only two commands are supported:
 - `xswm delete` to close focused window
 - `xswm last`   to focus the last window
 
-To quit send the `SIGTERM` signal with `pkill xswm`. xswm will exit gracefully.
+To quit send the `SIGTERM` signal with `pkill xswm`. xswm will catch the signal
+and exit gracefully.
