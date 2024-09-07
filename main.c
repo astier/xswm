@@ -45,7 +45,6 @@ static void add(Window);
 static void delete(Window);
 static void focus(Window);
 static void pop(Window);
-static void pop_last(void);
 static void resize(Window);
 static void send_event(Window, Atom);
 static void set_state(Window, long);
@@ -129,8 +128,6 @@ void pop(const Window w) {
     head = c;
     update_client_list_stacking();
 }
-
-void pop_last(void) { if (clients_n > 1) pop(head->next->w); }
 
 void resize(const Window w) {
     XMoveResizeWindow(d, w, 0, 0, (unsigned int) sw, (unsigned int) sh);
@@ -256,8 +253,8 @@ void property_notify(const XPropertyEvent *e) {
     XGetTextProperty(d, r, &p, XA_WM_CMD);
     char cmd[16];
     strcpy(cmd, (char *) p.value);
-    if (!strcmp(cmd, "last"))
-        pop_last();
+    if (!strcmp(cmd, "last") && clients_n > 1)
+        pop(head->next->w);
     else if (!strcmp(cmd, "delete") && clients_n > 0)
         delete(head->w);
     XFree(p.value);
