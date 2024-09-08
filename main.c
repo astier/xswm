@@ -89,13 +89,13 @@ void add(const Window w) {
     if (c)
         return;
     // Configure, map and focus window
-    set_state(w, NormalState);
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {0, 0, 0, 0}, 4);
     XSetWindowBorderWidth(d, w, 0);
     resize(w);
+    set_state(w, NormalState);
     XMapWindow(d, w);
     focus(w);
     // Add window to list
@@ -119,7 +119,6 @@ void pop(const Window w) {
     Client *c = get_client(w);
     if (!c || head == c)
         return;
-    set_state(w, NormalState); // Fix windows which think they are in IconicState when unfocused
     focus(w);
     XRaiseWindow(d, w);
     // Update list
