@@ -110,9 +110,9 @@ void delete(const Window w) { send_event(w, wm_atoms[DeleteWindow]); }
 
 void focus(const Window w) {
     XSetInputFocus(d, w, RevertToPointerRoot, CurrentTime);
-    send_event(w, wm_atoms[TakeFocus]);
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
+    send_event(w, wm_atoms[TakeFocus]);
 }
 
 void pop(const Window w) {
