@@ -56,6 +56,7 @@ static void update_client_list_stacking(void);
 static void client_message(const XClientMessageEvent *);
 static void configure_notify(const XConfigureEvent *);
 static void configure_request(const XConfigureRequestEvent *);
+static void focus_in(const XFocusInEvent *);
 static void property_notify(const XPropertyEvent *);
 static void unmap_notify(const XUnmapEvent *);
 
@@ -93,6 +94,7 @@ void add(const Window w) {
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {0, 0, 0, 0}, 4);
+    XSelectInput(d, w, FocusChangeMask);
     XSetWindowBorderWidth(d, w, 0);
     resize(w);
     set_state(w, NormalState);
@@ -245,6 +247,11 @@ void configure_request(const XConfigureRequestEvent *e) {
     XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
 }
 
+void focus_in(const XFocusInEvent *e) {
+    if (head && head->w != e->window)
+        focus(head->w);
+}
+
 void property_notify(const XPropertyEvent *e) {
     if (e->window != r || e->atom != XA_WM_CMD)
         return;
@@ -378,6 +385,7 @@ int main(const int argc, const char *argv[]) {
             case ClientMessage: client_message(&e.xclient); break;
             case ConfigureNotify: configure_notify(&e.xconfigure); break;
             case ConfigureRequest: configure_request(&e.xconfigurerequest); break;
+            case FocusIn: focus_in(&e.xfocus); break;
             case MapRequest: add(e.xmaprequest.window); break;
             case PropertyNotify: property_notify(&e.xproperty); break;
             case UnmapNotify: unmap_notify(&e.xunmap); break;
