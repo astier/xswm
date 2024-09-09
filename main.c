@@ -247,6 +247,7 @@ void configure_request(const XConfigureRequestEvent *e) {
     XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
 }
 
+// Prevent bad clients from stealing focus
 void focus_in(const XFocusInEvent *e) {
     if (head && head->w != e->window)
         focus(head->w);
