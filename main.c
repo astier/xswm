@@ -60,6 +60,10 @@ static void focus_in(const XFocusInEvent *);
 static void property_notify(const XPropertyEvent *);
 static void unmap_notify(const XUnmapEvent *);
 
+// Remote-Commands
+static void close(void);
+static void last(void);
+
 // Variables
 static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
 static Client *head;
@@ -260,10 +264,10 @@ void property_notify(const XPropertyEvent *e) {
     XGetTextProperty(d, r, &p, XA_WM_CMD);
     char cmd[16];
     strcpy(cmd, (char *) p.value);
-    if (!strcmp(cmd, "last") && clients_n > 1)
-        pop(head->next->w);
-    else if (!strcmp(cmd, "delete") && clients_n > 0)
-        delete(head->w);
+    if (!strcmp(cmd, "close"))
+        close();
+    else if (!strcmp(cmd, "last"))
+        last();
     XFree(p.value);
 }
 
@@ -290,6 +294,10 @@ void unmap_notify(const XUnmapEvent *e) {
     set_state(w, WithdrawnState);
     XDeleteProperty(d, w, net_atoms[WMDesktop]);
 }
+
+void close(void) { if (clients_n > 0) delete(head->w); }
+
+void last(void) { if (clients_n > 1) pop(head->next->w); }
 
 int main(const int argc, const char *argv[]) {
     if (!(d = XOpenDisplay(NULL)))
