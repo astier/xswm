@@ -253,12 +253,9 @@ void property_notify(const XPropertyEvent *e) {
     XGetTextProperty(d, r, &p, XA_WM_CMD);
     char cmd[16];
     strcpy(cmd, (char *) p.value);
-    if (!strcmp(cmd, "close"))
-        close();
-    else if (!strcmp(cmd, "last"))
-        last();
-    else if (!strcmp(cmd, "quit"))
-        quit();
+    if      (!strcmp(cmd, "close")) close();
+    else if (!strcmp(cmd, "last"))  last();
+    else if (!strcmp(cmd, "quit"))  quit();
     XFree(p.value);
 }
 
