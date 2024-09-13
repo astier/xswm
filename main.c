@@ -48,7 +48,6 @@ static void pop(Window);
 static void resize(Window);
 static void send_event(Window, Atom);
 static void set_state(Window, long);
-static void signal_handler(int);
 static void update_client_list(Window, Bool);
 static void update_client_list_stacking(void);
 
@@ -63,14 +62,15 @@ static void unmap_notify(const XUnmapEvent *);
 // Remote-Commands
 static void close(void);
 static void last(void);
+static void quit(void);
 
 // Variables
 static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
+static Bool running = True;
 static Client *head;
 static Display *d;
 static int clients_n = 0;
 static int sh, sw; // screen-width and -height
-static volatile sig_atomic_t running = True;
 static Window r; // root-window
 
 Client * get_client(const Window w) {
@@ -162,17 +162,6 @@ void send_event(const Window w, const Atom protocol) {
 void set_state(const Window w, const long state) {
     XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
         PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
-}
-
-void signal_handler(const int signal) {
-    (void) signal;
-    running = False;
-    // Send dummy-event to unblock XNextEvent()
-    XSendEvent(d, r, False, SubstructureRedirectMask, (XEvent *) &(XClientMessageEvent) {
-        .type = ClientMessage,
-        .format = 32,
-    });
-    XFlush(d);
 }
 
 void update_client_list(const Window w, const Bool add) {
@@ -268,6 +257,8 @@ void property_notify(const XPropertyEvent *e) {
         close();
     else if (!strcmp(cmd, "last"))
         last();
+    else if (!strcmp(cmd, "quit"))
+        quit();
     XFree(p.value);
 }
 
@@ -299,6 +290,8 @@ void close(void) { if (clients_n > 0) delete(head->w); }
 
 void last(void) { if (clients_n > 1) pop(head->next->w); }
 
+void quit(void) { running = False; }
+
 int main(const int argc, const char *argv[]) {
     if (!(d = XOpenDisplay(NULL)))
         return EXIT_FAILURE;
@@ -315,7 +308,6 @@ int main(const int argc, const char *argv[]) {
     }
     // Handle signals
     signal(SIGCHLD, SIG_IGN);
-    signal(SIGTERM, signal_handler);
     // Fixes libreoffice-recovery-crash
     XSetErrorHandler(xerror);
     // Variables

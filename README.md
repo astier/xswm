@@ -36,10 +36,8 @@ No status-bar, multi-monitor or -desktop support.
 ## Remote-Control
 
 xswm can be remotely controlled with `xswm <cmd>`.
-Currently only two commands are supported:
+The following commands are supported:
 
 - `xswm close` to close focused window
 - `xswm last`  to focus the last window
-
-To quit send the `SIGTERM` signal with `pkill xswm`. xswm will catch the signal
-and exit gracefully.
+- `xswm quit`  to quit xswm
