@@ -10,10 +10,12 @@ CFLAGS += -Wold-style-definition
 CFLAGS += -Wpedantic
 CFLAGS += -Wshadow
 
+LDFLAGS += -lX11
+
 all: xswm
 
 xswm: main.c Makefile
-	$(CC) $(CFLAGS) -o $@ $< -lX11
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 install: all
 	install -D xswm $(DESTDIR)$(PREFIX)/xswm
