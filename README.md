@@ -6,7 +6,6 @@ configuration required. No built-in:
 
 - Hotkeys
 - Statusbar
-- Tiling
 - Window-Decoration
 - Window-Switcher
 - etc.
@@ -16,6 +15,10 @@ performant (\~400 SLOC). Tries to be
 [ICCCM](https://www.x.org/releases/current/doc/xorg-docs/icccm/icccm.html) and
 [EWMH](https://specifications.freedesktop.org/wm-spec/latest/) compliant
 insofar it is necessary to make applications and windows work properly.
+
+## Dependencies
+
+- libx11
 
 ## Installation
 
@@ -28,25 +31,26 @@ make install
 There is no configuration. xswm opens every window maximized and that's that
 (except some special windows like splash- and dialog-windows). Besides that the
 shell-script `$XDG_CONFIG_HOME/xswm/autostart.sh` can be used to autostart
-programs. To extend its capabilities use xswm in combination with other
-programs. The minimum recommendations to make xswm usable are:
+programs.
+
+## Recommended Programs
+
+Since xswm on its own can not do much more than managing windows I recommend to
+use it in combination with the following programs to make it usable:
 
 - Hotkey-Daemon like [sxhkd](https://github.com/baskerville/sxhkd)
 - Application-Launcher like [dmenu](https://tools.suckless.org/dmenu/)
 - Window-Switcher like [alttab](https://github.com/sagb/alttab/)
-
-Other useful programs might be:
-
 - [xhidecursor](https://github.com/astier/xhidecursor) to hide the cursor when
   typing and unhide it when moving the mouse
 
-No status-bar, multi-monitor or -desktop support (at least at the moment).
+**Note:** No status-bar, multi-monitor or -desktop support (at least at the moment).
 
 ## Remote-Control
 
 xswm can be remotely controlled with `xswm <cmd>`.
 The following commands are supported:
 
-- `close` to close the focused window
-- `last`  to focus the last window
-- `quit`  to quit xswm
+- `xswm close` to close the focused window
+- `xswm last`  to focus the last window
+- `xswm quit`  to quit xswm
