@@ -114,8 +114,8 @@ void add(const Window w) {
     unsigned int width, height;
     XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
         &(unsigned int) {None}, &(unsigned int) {None});
-    y = (sh - ((int) height + bw * 2)) / 2;
     x = (sw - ((int) width  + bw * 2)) / 2;
+    y = (sh - ((int) height + bw * 2)) / 2;
     // Initialize client
     memcpy(c = malloc(sizeof(Client)), &(Client) { w, floating,
         x, y, (int) width, (int) height, head }, sizeof(Client));
