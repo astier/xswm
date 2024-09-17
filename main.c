@@ -38,7 +38,7 @@ enum {
 
 typedef struct Client {
     const Window w;
-    const Bool floating;
+    Bool floating;
     int x, y, width, height;
     struct Client *next;
 } Client;
@@ -53,6 +53,7 @@ static void focus(Window);
 static void pop(Window);
 static void resize(const Client *);
 static void send_event(Window, Atom);
+static void set_dimensions(Client *, int, int);
 static void set_state(Window, long);
 static void update_client_list(Window, Bool);
 static void update_client_list_stacking(void);
@@ -101,24 +102,22 @@ void add(const Window w) {
     Client *c = get_client(w);
     if (c)
         return;
+    // Initialize client
+    memcpy(c = malloc(sizeof(Client)), &(Client) { w, False,
+        0, 0, sw, sh, head }, sizeof(Client));
     // Check if window is floating
     unsigned char *prop = NULL;
     XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False, XA_ATOM,
     &(Atom) {None}, &(int) {None}, &(unsigned long) {None}, &(unsigned long) {None}, &prop);
     const Atom type = prop ? *(Atom *)prop : None;
-    const Bool floating = type == None || type == net_atoms[WMWindowTypeNormal]
+    c->floating = type == None || type == net_atoms[WMWindowTypeNormal]
         ? False : True;
     XFree(prop);
     // Get window-geometry and center window
-    int x, y;
     unsigned int width, height;
-    XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
+    XGetGeometry(d, w, &(Window) {None}, &(int) {None}, &(int) {None}, &width, &height,
         &(unsigned int) {None}, &(unsigned int) {None});
-    x = (sw - ((int) width  + bw * 2)) / 2;
-    y = (sh - ((int) height + bw * 2)) / 2;
-    // Initialize client
-    memcpy(c = malloc(sizeof(Client)), &(Client) { w, floating,
-        x, y, (int) width, (int) height, head }, sizeof(Client));
+    set_dimensions(c, (int) width, (int) height);
     // Configure, map and focus window
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
@@ -187,6 +186,22 @@ void send_event(const Window w, const Atom protocol) {
     e.xclient.data.l[0] = (long) protocol;
     e.xclient.data.l[1] = CurrentTime;
     XSendEvent(d, w, False, NoEventMask, &e);
+}
+
+void set_dimensions(Client *c, const int w, const int h) {
+    const int bw_combined = bw * 2;
+    c->x = (sw - (w  + bw_combined)) / 2;
+    c->y = (sh - (h  + bw_combined)) / 2;
+    c->height = h;
+    c->width = w;
+    if (c->x < 0) {
+        c->x = 0;
+        c->width = sw - bw * 2;
+    }
+    if (c->y < 0) {
+        c->y = 0;
+        c->height = sh - bw * 2;
+    }
 }
 
 void set_state(const Window w, const long state) {
