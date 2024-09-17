@@ -74,7 +74,7 @@ static void quit(void);
 // Variables
 static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
 static Bool running = True;
-static Client *head;
+static Client *head; // Top-window and start of a linked-list
 static Display *d;
 static int clients_n = 0;
 static int sh, sw; // screen-width and -height
