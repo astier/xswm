@@ -20,6 +20,10 @@ enum {
     WMDesktop,
     WMFullPlacement,
     WMName,
+    WMWindowType,
+    WMWindowTypeDialog,
+    WMWindowTypeNormal,
+    WMWindowTypeSplash,
     Net_N
 };
 
@@ -45,12 +49,14 @@ static void update_client_list(Window, Bool);
 static void update_client_list_stacking(void);
 
 // Clients-Functions
+static Bool is_floating(Window);
 static Bool is_managed(Window);
 static Bool is_top(Window);
 static unsigned long get_idx(Window);
 static void remove(Window);
 
 // Event-Handlers
+static void button_press(const XButtonPressedEvent *);
 static void client_message(const XClientMessageEvent *);
 static void configure_notify(const XConfigureEvent *);
 static void configure_request(const XConfigureRequestEvent *);
@@ -68,11 +74,21 @@ static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
 static Bool running = True;
 static Display *d;
 static int sh, sw; // screen-width and -height
+static int bw = 1; // border-width
 static Window r; // root-window
 
 // Clients
 static Window *clients;
 static unsigned long clients_n = 0; // Number of elements in array
+
+Bool is_floating(const Window w) {
+    unsigned char *prop = NULL;
+    XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False, XA_ATOM, &(Atom) {None},
+        &(int) {None}, &(unsigned long) {None}, &(unsigned long) {None}, &prop);
+    const Atom type = prop ? *(Atom *)prop : None;
+    XFree(prop);
+    return type != None && type != net_atoms[WMWindowTypeNormal];
+}
 
 Bool is_managed(const Window w) { return get_idx(w) < clients_n; }
 
@@ -94,8 +110,10 @@ void add(const Window w) {
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {0, 0, 0, 0}, 4);
+    XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
+        GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask);
-    XSetWindowBorderWidth(d, w, 0);
+    XSetWindowBorderWidth(d, w, (unsigned int) bw);
     resize(w);
     set_state(w, NormalState);
     XMapWindow(d, w);
@@ -134,7 +152,26 @@ void pop(const Window w) {
 }
 
 void resize(const Window w) {
-    XMoveResizeWindow(d, w, 0, 0, (unsigned int) sw, (unsigned int) sh);
+    int x = -bw, y = -bw; // Hide border
+    unsigned int width  = (unsigned int) sw;
+    unsigned int height = (unsigned int) sh;
+    // Center floating window
+    if (is_floating(w)) {
+        XGetGeometry(d, w, &(Window) {None}, &(int) {None}, &(int) {None},
+            &width, &height, &(unsigned int) {None}, &(unsigned int) {None});
+        const int bw_combined = bw * 2;
+        x = (sw - ((int) width  + bw_combined)) / 2;
+        y = (sh - ((int) height + bw_combined)) / 2;
+        if (x < 0) {
+            x = 0;
+            width = (unsigned int) (sw - bw_combined);
+        }
+        if (y < 0) {
+            y = 0;
+            height = (unsigned int) (sh - bw_combined);
+        }
+    }
+    XMoveResizeWindow(d, w, x, y, width, height);
 }
 
 void send_event(const Window w, const Atom protocol) {
@@ -195,6 +232,11 @@ void update_client_list_stacking(void) {
         PropModeReplace, (unsigned char *) clients, (int) clients_n);
 }
 
+void button_press(const XButtonPressedEvent *e) {
+    pop(e->window);
+    XAllowEvents(d, ReplayPointer, CurrentTime);
+}
+
 void client_message(const XClientMessageEvent *e) {
     const Window w = e->window;
     if (!is_managed(w))
@@ -216,10 +258,10 @@ void configure_notify(const XConfigureEvent *e) {
         for (unsigned long i = 0; i < clients_n; i++)
             resize(clients[i]);
     } else if (is_managed(w)) {
-        if (e->border_width != 0)
-            XSetWindowBorderWidth(d, w, 0);
-        if (e->x != 0 || e->y != 0 || wh != sh || ww != sw)
-            resize(w);
+        if (e->border_width != bw)
+            XSetWindowBorderWidth(d, w, (unsigned int) bw);
+        if (!is_floating(w) && (e->x != -bw || e->x != -bw || ww != sw || wh != sh))
+            XMoveResizeWindow(d, w, -bw, -bw, (unsigned int) sw, (unsigned int) sh);
     }
 }
 
@@ -322,6 +364,10 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[WMDesktop] = "_NET_WM_DESKTOP";
     net_atom_names[WMFullPlacement] = "_NET_WM_FULL_PLACEMENT";
     net_atom_names[WMName] = "_NET_WM_NAME";
+    net_atom_names[WMWindowType] = "_NET_WM_WINDOW_TYPE";
+    net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
+    net_atom_names[WMWindowTypeNormal] = "_NET_WM_WINDOW_TYPE_NORMAL";
+    net_atom_names[WMWindowTypeSplash] = "_NET_WM_WINDOW_TYPE_SPLASH";
     XInternAtoms(d, net_atom_names, Net_N, False, net_atoms);
     // EWMH configuration
     const Window wm_check = XCreateSimpleWindow(d, r, 0, 0, 1, 1, 0, 0, 0);
@@ -369,6 +415,7 @@ int main(const int argc, const char *argv[]) {
     while (running) {
         XNextEvent(d, &e);
         switch (e.type) {
+            case ButtonPress: button_press(&e.xbutton); break;
             case ClientMessage: client_message(&e.xclient); break;
             case ConfigureNotify: configure_notify(&e.xconfigure); break;
             case ConfigureRequest: configure_request(&e.xconfigurerequest); break;
