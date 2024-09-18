@@ -10,7 +10,7 @@ configuration required. No built-in:
 - Window-Switcher
 - etc.
 
-Due to its limited scope it is very minimal and performant (\~330 SLOC). Tries
+Due to its limited scope it is very minimal and performant (\~340 SLOC). Tries
 to be
 [ICCCM](https://www.x.org/releases/current/doc/xorg-docs/icccm/icccm.html) and
 [EWMH](https://specifications.freedesktop.org/wm-spec/latest/) compliant
