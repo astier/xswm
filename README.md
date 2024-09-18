@@ -10,8 +10,8 @@ configuration required. No built-in:
 - Window-Switcher
 - etc.
 
-Just a window-manager. Due to its limited scope it is very minimal and
-performant (\~400 SLOC). Tries to be
+Due to its limited scope it is very minimal and performant (\~340 SLOC). Tries
+to be
 [ICCCM](https://www.x.org/releases/current/doc/xorg-docs/icccm/icccm.html) and
 [EWMH](https://specifications.freedesktop.org/wm-spec/latest/) compliant
 insofar it is necessary to make applications and windows work properly.
@@ -28,23 +28,9 @@ make install
 
 ## Configuration
 
-There is no configuration. xswm opens every window maximized and that's that
-(except some special windows like splash- and dialog-windows). Besides that the
-shell-script `$XDG_CONFIG_HOME/xswm/autostart.sh` can be used to autostart
-programs.
-
-## Recommended Programs
-
-Since xswm on its own can not do much more than managing windows I recommend to
-use it in combination with the following programs to make it usable:
-
-- Hotkey-Daemon like [sxhkd](https://github.com/baskerville/sxhkd)
-- Application-Launcher like [dmenu](https://tools.suckless.org/dmenu/)
-- Window-Switcher like [alttab](https://github.com/sagb/alttab/)
-- [xhidecursor](https://github.com/astier/xhidecursor) to hide the cursor when
-  typing and unhide it when moving the mouse
-
-**Note:** No status-bar, multi-monitor or -desktop support (at least at the moment).
+There is no configuration. xswm opens every window maximized and that's that.
+Besides that the shell-script `$XDG_CONFIG_HOME/xswm/autostart.sh` can be used
+to autostart programs.
 
 ## Remote-Control
 
@@ -54,3 +40,16 @@ The following commands are supported:
 - `xswm close` to close the focused window
 - `xswm last`  to focus the last window
 - `xswm quit`  to quit xswm
+
+## Recommended Programs
+
+Since xswm is just a window-manager is should be used in combination with other
+programs to make it usable. Some recommendations are:
+
+- Hotkey-Daemon like [sxhkd](https://github.com/baskerville/sxhkd)
+- Application-Launcher like [dmenu](https://tools.suckless.org/dmenu/)
+- Window-Switcher like [alttab](https://github.com/sagb/alttab/)
+- [xhidecursor](https://github.com/astier/xhidecursor) to hide the cursor when
+  typing and unhide it when moving the mouse
+
+**Note:** No status-bar, multi-monitor or -desktop support (at least for now).
