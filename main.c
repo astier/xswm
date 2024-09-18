@@ -107,11 +107,10 @@ void add(const Window w) {
         0, 0, sw, sh, head }, sizeof(Client));
     // Check if window is floating
     unsigned char *prop = NULL;
-    XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False, XA_ATOM,
-    &(Atom) {None}, &(int) {None}, &(unsigned long) {None}, &(unsigned long) {None}, &prop);
+    XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False, XA_ATOM, &(Atom) {None},
+        &(int) {None}, &(unsigned long) {None}, &(unsigned long) {None}, &prop);
     const Atom type = prop ? *(Atom *)prop : None;
-    c->floating = type == None || type == net_atoms[WMWindowTypeNormal]
-        ? False : True;
+    c->floating = type == None || type == net_atoms[WMWindowTypeNormal] ? False : True;
     XFree(prop);
     // Get window-geometry and center window
     unsigned int width, height;
