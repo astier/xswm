@@ -39,6 +39,7 @@ enum {
 typedef struct Client {
     const Window w;
     const Bool floating;
+    int x, y, width, height;
     struct Client *next;
 } Client;
 
@@ -50,7 +51,7 @@ static void add(Window);
 static void delete(Window);
 static void focus(Window);
 static void pop(Window);
-static void resize(const Client *);
+static void resize(Client *);
 static void send_event(Window, Atom);
 static void set_state(Window, long);
 static void update_client_list(Window, Bool);
@@ -112,7 +113,8 @@ void add(const Window w) {
         ? False : True;
     XFree(prop);
     // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w, floating, head}, sizeof(Client));
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w, floating,
+        None, None, None, None, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
     update_client_list_stacking();
@@ -153,7 +155,7 @@ void pop(const Window w) {
     update_client_list_stacking();
 }
 
-void resize(const Client *c) {
+void resize(Client *c) {
     // Initialize geometry for maximized windows
     int x = -bw, y = -bw; // Hide border
     unsigned int width  = (unsigned int) sw;
@@ -176,6 +178,7 @@ void resize(const Client *c) {
             height = (unsigned int) (sh - bw2 - gap_y * 2);
         }
     }
+    c->x = x, c->y = y, c->width = (int) width, c->height = (int) height;
     XMoveResizeWindow(d, c->w, x, y, width, height);
 }
 
@@ -258,10 +261,9 @@ void client_message(const XClientMessageEvent *e) {
 }
 
 void configure_notify(const XConfigureEvent *e) {
-    const Window w = e->window;
-    const int wh = e->height;
-    const int ww = e->width;
     Client *c;
+    const Window w = e->window;
+    const int x = e->x, y = e->y, wh = e->height, ww = e->width;
     if (w == r && (wh != sh || ww != sw)) {
         sh = wh;
         sw = ww;
@@ -272,11 +274,7 @@ void configure_notify(const XConfigureEvent *e) {
     } else if ((c = get_client(w))) {
         if (e->border_width != bw)
             XSetWindowBorderWidth(d, w, (unsigned int) bw);
-        if (c->floating) {
-            const int bw2 = bw * 2;
-            if (e->x < gap_x || e->y < gap_y || wh + bw2 > sh - gap_y * 2 || ww + bw2 > sw - gap_x * 2)
-                resize(c);
-        } else if (e->x != -bw || e->y != -bw || wh != sh || ww != sw)
+        if (x != c->x || y != c->y || ww != c->width || wh != c->height)
             resize(c);
     }
 }
