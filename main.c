@@ -444,6 +444,5 @@ int main(const int argc, const char *argv[]) {
             case UnmapNotify: unmap_notify(&e.xunmap); break;
         }
     }
-    // Clean-Up
     XCloseDisplay(d);
 }
