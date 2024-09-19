@@ -43,7 +43,7 @@ The following commands are supported:
 
 ## Recommended Programs
 
-Since xswm is just a window-manager is should be used in combination with other
+Since xswm is just a window-manager it should be used in combination with other
 programs to make it usable. Some recommendations are:
 
 - Hotkey-Daemon like [sxhkd](https://github.com/baskerville/sxhkd)
