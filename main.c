@@ -46,6 +46,7 @@ typedef struct Client {
 } Client;
 
 // Functions
+static Bool send_event(Window, Atom);
 static Client * get_client(Window);
 static Client * get_parent(const Client *);
 static int xerror(Display *, XErrorEvent *);
@@ -54,7 +55,6 @@ static void delete(Window);
 static void focus(Window);
 static void pop(Window);
 static void resize(Client *);
-static void send_event(Window, Atom);
 static void set_frame_extents(Window);
 static void set_state(Window, long);
 static void update_client_list(Window, Bool);
@@ -85,6 +85,27 @@ static Window r; // root-window
 // Linked-List
 static Client *head; // Top-window and start of a linked-list
 static int clients_n = 0; // Number of clients in list
+
+Bool send_event(const Window w, const Atom protocol) {
+    Atom *protocols;
+    int count;
+    if (!XGetWMProtocols(d, w, &protocols, &count))
+        return False;
+    Bool protocol_exists = False;
+    while (!protocol_exists && count--)
+        protocol_exists = protocols[count] == protocol;
+    XFree(protocols);
+    if (!protocol_exists)
+        return False;
+    XEvent e;
+    e.type = ClientMessage;
+    e.xclient.window = w;
+    e.xclient.message_type = wm_atoms[Protocols];
+    e.xclient.format = 32;
+    e.xclient.data.l[0] = (long) protocol;
+    e.xclient.data.l[1] = CurrentTime;
+    return XSendEvent(d, w, False, NoEventMask, &e);
+}
 
 Client * get_client(const Window w) {
     Client *c;
@@ -148,7 +169,10 @@ void add(const Window w) {
     focus(w);
 }
 
-void delete(const Window w) { send_event(w, wm_atoms[DeleteWindow]); }
+void delete(const Window w) {
+    if (!send_event(w, wm_atoms[DeleteWindow]))
+        XKillClient(d, w);
+}
 
 void focus(const Window w) {
     XSetInputFocus(d, w, RevertToPointerRoot, CurrentTime);
@@ -187,27 +211,6 @@ void resize(Client *c) {
     }
     c->x = x, c->y = y, c->width = width, c->height = height;
     XMoveResizeWindow(d, c->w, x, y, width, height);
-}
-
-void send_event(const Window w, const Atom protocol) {
-    Atom *protocols;
-    int n;
-    if (!XGetWMProtocols(d, w, &protocols, &n))
-        return;
-    Bool protocol_exists = False;
-    while (!protocol_exists && n--)
-        protocol_exists = protocols[n] == protocol;
-    XFree(protocols);
-    if (!protocol_exists)
-        return;
-    XEvent e;
-    e.type = ClientMessage;
-    e.xclient.window = w;
-    e.xclient.message_type = wm_atoms[Protocols];
-    e.xclient.format = 32;
-    e.xclient.data.l[0] = (long) protocol;
-    e.xclient.data.l[1] = CurrentTime;
-    XSendEvent(d, w, False, NoEventMask, &e);
 }
 
 void set_frame_extents(const Window w) {
