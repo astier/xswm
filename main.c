@@ -210,9 +210,8 @@ void update_client_list(const Window w, const Bool add) {
     // Get _NET_CLIENT_LIST
     unsigned long nitems;
     unsigned char *prop = NULL;
-    XGetWindowProperty(d, r, net_atoms[ClientList],
-        0, sizeof(Window), False, XA_WINDOW, &(Atom) {None},
-        &(int) {None}, &nitems, &(unsigned long) {None}, &prop);
+    XGetWindowProperty(d, r, net_atoms[ClientList], 0, sizeof(Window), False, XA_WINDOW,
+        &(Atom) {None}, &(int) {None}, &nitems, &(unsigned long) {None}, &prop);
     if (!prop)
         return;
     Window *client_list = (Window *) prop;
