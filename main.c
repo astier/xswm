@@ -20,6 +20,10 @@ enum {
     WMDesktop,
     WMFullPlacement,
     WMName,
+    WMWindowType,
+    WMWindowTypeDialog,
+    WMWindowTypeNormal,
+    WMWindowTypeSplash,
     Net_N
 };
 
@@ -34,6 +38,7 @@ enum {
 
 typedef struct Client {
     const Window w;
+    const Bool floating;
     struct Client *next;
 } Client;
 
@@ -45,13 +50,14 @@ static void add(Window);
 static void delete(Window);
 static void focus(Window);
 static void pop(Window);
-static void resize(Window);
+static void resize(const Client *);
 static void send_event(Window, Atom);
 static void set_state(Window, long);
 static void update_client_list(Window, Bool);
 static void update_client_list_stacking(void);
 
 // Event-Handlers
+static void button_press(const XButtonPressedEvent *);
 static void client_message(const XClientMessageEvent *);
 static void configure_notify(const XConfigureEvent *);
 static void configure_request(const XConfigureRequestEvent *);
@@ -69,6 +75,7 @@ static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
 static Bool running = True;
 static Display *d;
 static int sh, sw; // screen-width and -height
+static int bw = 1; // border-width
 static Window r; // root-window
 
 // Linked-List
@@ -94,22 +101,32 @@ int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
 void add(const Window w) {
     if (get_client(w))
         return;
+    // Check if window is floating
+    unsigned char *prop = NULL;
+    XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False, XA_ATOM, &(Atom) {None},
+        &(int) {None}, &(unsigned long) {None}, &(unsigned long) {None}, &prop);
+    const Atom type = prop ? *(Atom *)prop : None;
+    const Bool floating = type == None || type == net_atoms[WMWindowTypeNormal]
+        ? False : True;
+    XFree(prop);
+    // Initialize client and add to list
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w, floating, head}, sizeof(Client));
+    clients_n++;
+    update_client_list(w, True);
+    update_client_list_stacking();
     // Configure, map and focus window
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {0, 0, 0, 0}, 4);
+    XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
+        GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask);
-    XSetWindowBorderWidth(d, w, 0);
-    resize(w);
+    XSetWindowBorderWidth(d, w, (unsigned int) bw);
+    resize(head);
     set_state(w, NormalState);
     XMapWindow(d, w);
     focus(w);
-    // Add window to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w, head}, sizeof(Client));
-    clients_n++;
-    update_client_list(w, True);
-    update_client_list_stacking();
 }
 
 void delete(const Window w) { send_event(w, wm_atoms[DeleteWindow]); }
@@ -134,8 +151,30 @@ void pop(const Window w) {
     update_client_list_stacking();
 }
 
-void resize(const Window w) {
-    XMoveResizeWindow(d, w, 0, 0, (unsigned int) sw, (unsigned int) sh);
+void resize(const Client *c) {
+    // Initialize geometry for maximized windows
+    int x = -bw, y = -bw; // Hide border
+    unsigned int width  = (unsigned int) sw;
+    unsigned int height = (unsigned int) sh;
+    // Compute geometry for floating windows
+    if (c->floating) {
+        XGetGeometry(d, c->w, &(Window) {None}, &(int) {None}, &(int) {None},
+            &width, &height, &(unsigned int) {None}, &(unsigned int) {None});
+        // Center window
+        const int bw2 = bw * 2;
+        x = (sw - ((int) width  + bw2)) / 2;
+        y = (sh - ((int) height + bw2)) / 2;
+        // Make sure window is not to big
+        if (x < 0) {
+            x = 0;
+            width = (unsigned int) (sw - bw2);
+        }
+        if (y < 0) {
+            y = 0;
+            height = (unsigned int) (sh - bw2);
+        }
+    }
+    XMoveResizeWindow(d, c->w, x, y, width, height);
 }
 
 void send_event(const Window w, const Atom protocol) {
@@ -200,6 +239,11 @@ void update_client_list_stacking(void) {
         PropModeReplace, (unsigned char *) clients, clients_n);
 }
 
+void button_press(const XButtonPressedEvent *e) {
+    pop(e->window);
+    XAllowEvents(d, ReplayPointer, CurrentTime);
+}
+
 void client_message(const XClientMessageEvent *e) {
     const Window w = e->window;
     if (!get_client(w))
@@ -215,16 +259,21 @@ void configure_notify(const XConfigureEvent *e) {
     const Window w = e->window;
     const int wh = e->height;
     const int ww = e->width;
+    Client *c;
     if (w == r && (wh != sh || ww != sw)) {
         sh = wh;
         sw = ww;
-        for (Client *c = head; c; c = c->next)
-            resize(w);
-    } else if (get_client(w)) {
-        if (e->border_width != 0)
-            XSetWindowBorderWidth(d, w, 0);
-        if (e->x != 0 || e->y != 0 || wh != sh || ww != sw)
-            resize(w);
+        for (c = head; c; c = c->next)
+            resize(c);
+    } else if ((c = get_client(w))) {
+        if (e->border_width != bw)
+            XSetWindowBorderWidth(d, w, (unsigned int) bw);
+        if (c->floating) {
+            const int bw2 = bw * 2;
+            if (e->x < 0 || e->y < 0 || wh + bw2 > sh || ww + bw2 > sw)
+                resize(c);
+        } else if (e->x != -bw || e->y != -bw || wh != sh || ww != sw)
+            resize(c);
     }
 }
 
@@ -334,6 +383,10 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[WMDesktop] = "_NET_WM_DESKTOP";
     net_atom_names[WMFullPlacement] = "_NET_WM_FULL_PLACEMENT";
     net_atom_names[WMName] = "_NET_WM_NAME";
+    net_atom_names[WMWindowType] = "_NET_WM_WINDOW_TYPE";
+    net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
+    net_atom_names[WMWindowTypeNormal] = "_NET_WM_WINDOW_TYPE_NORMAL";
+    net_atom_names[WMWindowTypeSplash] = "_NET_WM_WINDOW_TYPE_SPLASH";
     XInternAtoms(d, net_atom_names, Net_N, False, net_atoms);
     // EWMH configuration
     const Window wm_check = XCreateSimpleWindow(d, r, 0, 0, 1, 1, 0, 0, 0);
@@ -381,6 +434,7 @@ int main(const int argc, const char *argv[]) {
     while (running) {
         XNextEvent(d, &e);
         switch (e.type) {
+            case ButtonPress: button_press(&e.xbutton); break;
             case ClientMessage: client_message(&e.xclient); break;
             case ConfigureNotify: configure_notify(&e.xconfigure); break;
             case ConfigureRequest: configure_request(&e.xconfigurerequest); break;
