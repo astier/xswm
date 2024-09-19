@@ -65,7 +65,7 @@ static void client_message(const XClientMessageEvent *);
 static void configure_notify(const XConfigureEvent *);
 static void configure_request(const XConfigureRequestEvent *);
 static void focus_in(const XFocusInEvent *);
-static void map_request(const XMapRequestEvent *);
+static void map_request(Window);
 static void property_notify(const XPropertyEvent *);
 static void unmap_notify(const XUnmapEvent *);
 
@@ -270,8 +270,7 @@ void focus_in(const XFocusInEvent *e) {
         focus(head->w);
 }
 
-void map_request(const XMapRequestEvent *e) {
-    const Window w = e->window;
+void map_request(const Window w) {
     if (get_client(w))
         return;
     // Initialize client and add to list
@@ -439,21 +438,30 @@ int main(const int argc, const char *argv[]) {
         | StructureNotifyMask | PropertyChangeMask);
     XDefineCursor(d, r, XCreateFontCursor(d, 68));
     system("\"$XDG_CONFIG_HOME\"/xswm/autostart.sh &");
-    // Scan for windows at startup
-    Window *wins;
-    unsigned int n;
-    XQueryTree(d, r, &(Window) {None}, &(Window) {None}, &wins, &n);
-    for (unsigned int i = 0; i < n; i++) {
+    // Scan for windows which started before xswm
+    Window root, *children = NULL;
+    unsigned int nchildren;
+    if (XQueryTree(d, r, &root, &(Window) {None}, &children, &nchildren)) {
         XWindowAttributes wa;
-        if (XGetWindowAttributes(d, wins[i], &wa)
-        && !wa.override_redirect && wa.map_state == IsViewable) {
-            // Trigger a XMapRequestEvent
-            XUnmapWindow(d, wins[i]);
-            XMapWindow(d, wins[i]);
+        // Non-transient windows
+        for (unsigned int i = 0; i < nchildren; i++) {
+            Window w = children[i];
+            if (XGetWindowAttributes(d, w, &wa)
+            && !wa.override_redirect
+            && !XGetTransientForHint(d, w, &root)
+            && wa.map_state == IsViewable)
+                map_request(w);
         }
+        // Transient windows
+        for (unsigned int i = 0; i < nchildren; i++) {
+            Window w = children[i];
+            if (XGetWindowAttributes(d, children[i], &wa)
+            && XGetTransientForHint(d, children[i], &root)
+            && wa.map_state == IsViewable)
+                map_request(w);
+        }
+        XFree(children);
     }
-    if (wins)
-        XFree(wins);
     // Main-Loop
     XEvent e;
     while (running) {
@@ -464,7 +472,7 @@ int main(const int argc, const char *argv[]) {
             case ConfigureNotify: configure_notify(&e.xconfigure); break;
             case ConfigureRequest: configure_request(&e.xconfigurerequest); break;
             case FocusIn: focus_in(&e.xfocus); break;
-            case MapRequest: map_request(&e.xmaprequest); break;
+            case MapRequest: map_request(e.xmaprequest.window); break;
             case PropertyNotify: property_notify(&e.xproperty); break;
             case UnmapNotify: unmap_notify(&e.xunmap); break;
         }
