@@ -1,8 +1,8 @@
 ## Description
 
 [xswm](https://github.com/astier/xswm) is a stacking and non-reparenting
-window-manager for X and has only one task. Open every window maximized. Zero
-configuration required. No built-in:
+window-manager for X and has only one task. Open every window maximized (with
+some exceptions). Zero configuration required. No built-in:
 
 - Hotkeys
 - Statusbar
@@ -28,14 +28,12 @@ make install
 
 ## Configuration
 
-There is no configuration. xswm opens every window maximized and that's that.
-Besides that the shell-script `$XDG_CONFIG_HOME/xswm/autostart.sh` can be used
-to autostart programs.
+`$XDG_CONFIG_HOME/xswm/autostart.sh` can be used to autostart programs.
 
 ## Remote-Control
 
-xswm can be remotely controlled with `xswm <cmd>`.
-The following commands are supported:
+xswm can be remotely controlled with `xswm <cmd>`. The following commands are
+supported:
 
 - `xswm close` to close the focused window
 - `xswm last`  to focus the last window
