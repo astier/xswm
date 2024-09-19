@@ -49,6 +49,7 @@ typedef struct Client {
 static Bool send_event(Window, Atom);
 static Client * get_client(Window);
 static Client * get_parent(const Client *);
+static int get_state(Window);
 static int xerror(Display *, XErrorEvent *);
 static void delete(Window);
 static void focus(Window);
@@ -119,6 +120,20 @@ Client * get_parent(const Client *c) {
     Client *p;
     for (p = head; p && p->next != c; p = p->next);
     return p;
+}
+
+int get_state(const Window w) {
+    int state = -1;
+    unsigned char *prop;
+    unsigned long nitems;
+    if (XGetWindowProperty(d, w, wm_atoms[State], 0L, 2L, False, wm_atoms[State],
+    &(Atom) {None}, &(int) {None}, &nitems, &(unsigned long) {None},
+    (unsigned char **) &prop) == Success) {
+        if (nitems > 0)
+            state = *(int *) prop;
+        XFree(prop);
+    }
+    return state;
 }
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
@@ -449,15 +464,15 @@ int main(const int argc, const char *argv[]) {
             if (XGetWindowAttributes(d, w, &wa)
             && !wa.override_redirect
             && !XGetTransientForHint(d, w, &root)
-            && wa.map_state == IsViewable)
+            && (wa.map_state == IsViewable || get_state(w) == IconicState))
                 map_request(w);
         }
         // Transient windows
         for (unsigned int i = 0; i < nchildren; i++) {
             Window w = children[i];
-            if (XGetWindowAttributes(d, children[i], &wa)
-            && XGetTransientForHint(d, children[i], &root)
-            && wa.map_state == IsViewable)
+            if (XGetWindowAttributes(d, w, &wa)
+            && XGetTransientForHint(d, w, &root)
+            && (wa.map_state == IsViewable || get_state(w) == IconicState))
                 map_request(w);
         }
         XFree(children);
