@@ -50,7 +50,6 @@ static Bool send_event(Window, Atom);
 static Client * get_client(Window);
 static Client * get_parent(const Client *);
 static int xerror(Display *, XErrorEvent *);
-static void add(Window);
 static void delete(Window);
 static void focus(Window);
 static void pop(Window);
@@ -66,6 +65,7 @@ static void client_message(const XClientMessageEvent *);
 static void configure_notify(const XConfigureEvent *);
 static void configure_request(const XConfigureRequestEvent *);
 static void focus_in(const XFocusInEvent *);
+static void map_request(const XMapRequestEvent *);
 static void property_notify(const XPropertyEvent *);
 static void unmap_notify(const XUnmapEvent *);
 
@@ -122,52 +122,6 @@ Client * get_parent(const Client *c) {
 }
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
-
-void add(const Window w) {
-    if (get_client(w))
-        return;
-    // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w, False,
-        (int) -bw, (int) -bw, sw, sh, head}, sizeof(Client));
-    clients_n++;
-    update_client_list(w, True);
-    update_client_list_stacking();
-    // Check if window is floating
-    unsigned char *prop = NULL;
-    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
-            XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
-            &(unsigned long) {None}, &prop) == Success) {
-        Atom type;
-        if (prop)
-            type = *(Atom *) prop;
-        else {
-            if (XGetTransientForHint(d, w, &(Window) {None}))
-                type = net_atoms[WMWindowTypeDialog];
-            else
-                type = net_atoms[WMWindowTypeNormal];
-            XChangeProperty(d, w, net_atoms[WMWindowType], XA_ATOM, 32,
-                PropModeReplace, (unsigned char *) &type, 1);
-        }
-        head->floating = type != net_atoms[WMWindowTypeNormal];
-        if (prop)
-            XFree(prop);
-    }
-    // Configure
-    XGetGeometry(d, w, &(Window) {None}, &head->x, &head->y, &head->width,
-        &head->height, &(unsigned int) {None}, &(unsigned int) {None});
-    XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (int []) {0}, 1);
-    XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
-        GrabModeSync, GrabModeSync, None, None);
-    XSelectInput(d, w, FocusChangeMask);
-    XSetWindowBorderWidth(d, w, (unsigned int) bw);
-    set_frame_extents(w);
-    resize(head);
-    // Map and focus
-    set_state(w, NormalState);
-    XMapWindow(d, w);
-    focus(w);
-}
 
 void delete(const Window w) {
     if (!send_event(w, wm_atoms[DeleteWindow]))
@@ -316,6 +270,53 @@ void focus_in(const XFocusInEvent *e) {
         focus(head->w);
 }
 
+void map_request(const XMapRequestEvent *e) {
+    const Window w = e->window;
+    if (get_client(w))
+        return;
+    // Initialize client and add to list
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w, False,
+        (int) -bw, (int) -bw, sw, sh, head}, sizeof(Client));
+    clients_n++;
+    update_client_list(w, True);
+    update_client_list_stacking();
+    // Check if window is floating
+    unsigned char *prop = NULL;
+    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
+            XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
+            &(unsigned long) {None}, &prop) == Success) {
+        Atom type;
+        if (prop)
+            type = *(Atom *) prop;
+        else {
+            if (XGetTransientForHint(d, w, &(Window) {None}))
+                type = net_atoms[WMWindowTypeDialog];
+            else
+                type = net_atoms[WMWindowTypeNormal];
+            XChangeProperty(d, w, net_atoms[WMWindowType], XA_ATOM, 32,
+                PropModeReplace, (unsigned char *) &type, 1);
+        }
+        head->floating = type != net_atoms[WMWindowTypeNormal];
+        if (prop)
+            XFree(prop);
+    }
+    // Configure
+    XGetGeometry(d, w, &(Window) {None}, &head->x, &head->y, &head->width,
+        &head->height, &(unsigned int) {None}, &(unsigned int) {None});
+    XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (int []) {0}, 1);
+    XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
+        GrabModeSync, GrabModeSync, None, None);
+    XSelectInput(d, w, FocusChangeMask);
+    XSetWindowBorderWidth(d, w, (unsigned int) bw);
+    set_frame_extents(w);
+    resize(head);
+    // Map and focus
+    set_state(w, NormalState);
+    XMapWindow(d, w);
+    focus(w);
+}
+
 void property_notify(const XPropertyEvent *e) {
     if (e->window != r || e->atom != XA_WM_CMD)
         return;
@@ -445,8 +446,11 @@ int main(const int argc, const char *argv[]) {
     for (unsigned int i = 0; i < n; i++) {
         XWindowAttributes wa;
         if (XGetWindowAttributes(d, wins[i], &wa)
-        && !wa.override_redirect && wa.map_state == IsViewable)
-            add(wins[i]);
+        && !wa.override_redirect && wa.map_state == IsViewable) {
+            // Trigger a XMapRequestEvent
+            XUnmapWindow(d, wins[i]);
+            XMapWindow(d, wins[i]);
+        }
     }
     if (wins)
         XFree(wins);
@@ -460,7 +464,7 @@ int main(const int argc, const char *argv[]) {
             case ConfigureNotify: configure_notify(&e.xconfigure); break;
             case ConfigureRequest: configure_request(&e.xconfigurerequest); break;
             case FocusIn: focus_in(&e.xfocus); break;
-            case MapRequest: add(e.xmaprequest.window); break;
+            case MapRequest: map_request(&e.xmaprequest); break;
             case PropertyNotify: property_notify(&e.xproperty); break;
             case UnmapNotify: unmap_notify(&e.xunmap); break;
         }
