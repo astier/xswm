@@ -110,9 +110,15 @@ void add(const Window w) {
     const Bool floating = type == None || type == net_atoms[WMWindowTypeNormal]
         ? False : True;
     XFree(prop);
+    // Get geometry
+    int x = -bw, y = -bw;
+    unsigned int width  = (unsigned int) sw;
+    unsigned int height = (unsigned int) sh;
+    XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
+        &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
     memcpy(head = malloc(sizeof(Client)), &(Client) {w, floating,
-        None, None, None, None, head}, sizeof(Client));
+        x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
     update_client_list_stacking();
@@ -154,29 +160,24 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
-    // Initialize geometry for maximized windows
-    int x = -bw, y = -bw; // Hide border
-    unsigned int width  = (unsigned int) sw;
-    unsigned int height = (unsigned int) sh;
-    // Compute geometry for floating windows
+    int x = -bw, y = -bw, width = sw, height = sh;
     if (c->floating) {
-        XGetGeometry(d, c->w, &(Window) {None}, &(int) {None}, &(int) {None},
-            &width, &height, &(unsigned int) {None}, &(unsigned int) {None});
         // Center window
-        x = (sw - ((int) width  + bw * 2)) / 2;
-        y = (sh - ((int) height + bw * 2)) / 2;
+        width = c->width, height = c->height;
+        x = (sw - (width  + bw * 2)) / 2;
+        y = (sh - (height + bw * 2)) / 2;
         // Maximize if there are no gaps
         if (x <= 0) {
             x = -bw;
-            width = (unsigned int) sw;
+            width = sw;
         }
         if (y <= 0) {
             y = -bw;
-            height = (unsigned int) sh;
+            height = sh;
         }
     }
-    c->x = x, c->y = y, c->width = (int) width, c->height = (int) height;
-    XMoveResizeWindow(d, c->w, x, y, width, height);
+    c->x = x, c->y = y, c->width = width, c->height = height;
+    XMoveResizeWindow(d, c->w, x, y, (unsigned int) width, (unsigned int) height);
 }
 
 void send_event(const Window w, const Atom protocol) {
@@ -269,8 +270,10 @@ void configure_notify(const XConfigureEvent *e) {
     } else if ((c = get_client(w))) {
         if (e->border_width != bw)
             XSetWindowBorderWidth(d, w, (unsigned int) bw);
-        if (x != c->x || y != c->y || ww != c->width || wh != c->height)
+        if (x != c->x || y != c->y || ww != c->width || wh != c->height) {
+            c->x = x, c->y = y, c->width = ww, c->height = wh;
             resize(c);
+        }
     }
 }
 
