@@ -76,8 +76,6 @@ static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
 static Bool running = True;
 static Display *d;
 static int sh, sw; // screen-width and -height
-static int gap_x, gap_y; // Minimum gap for floating-windows
-static double gap_ratio = 0.05; // Used to compute gaps
 static int bw = 1; // border-width
 static Window r; // root-window
 
@@ -165,17 +163,16 @@ void resize(Client *c) {
         XGetGeometry(d, c->w, &(Window) {None}, &(int) {None}, &(int) {None},
             &width, &height, &(unsigned int) {None}, &(unsigned int) {None});
         // Center window
-        const int bw2 = bw * 2;
-        x = (sw - ((int) width  + bw2)) / 2;
-        y = (sh - ((int) height + bw2)) / 2;
-        // Make sure window is not to big
-        if (x < gap_x) {
-            x = gap_x;
-            width = (unsigned int) (sw - bw2 - gap_x * 2);
+        x = (sw - ((int) width  + bw * 2)) / 2;
+        y = (sh - ((int) height + bw * 2)) / 2;
+        // Maximize if there are no gaps
+        if (x <= 0) {
+            x = -bw;
+            width = (unsigned int) sw;
         }
-        if (y < gap_y) {
-            y = gap_y;
-            height = (unsigned int) (sh - bw2 - gap_y * 2);
+        if (y <= 0) {
+            y = -bw;
+            height = (unsigned int) sh;
         }
     }
     c->x = x, c->y = y, c->width = (int) width, c->height = (int) height;
@@ -267,8 +264,6 @@ void configure_notify(const XConfigureEvent *e) {
     if (w == r && (wh != sh || ww != sw)) {
         sh = wh;
         sw = ww;
-        gap_x = (int) (sw * gap_ratio);
-        gap_y = (int) (sh * gap_ratio);
         for (c = head; c; c = c->next)
             resize(c);
     } else if ((c = get_client(w))) {
@@ -363,8 +358,6 @@ int main(const int argc, const char *argv[]) {
     const int s = XDefaultScreen(d);
     sh = XDisplayHeight(d, s);
     sw = XDisplayWidth(d, s);
-    gap_x = (int) (sw * gap_ratio);
-    gap_y = (int) (sh * gap_ratio);
     // ICCCM atoms
     char *wm_atom_names[WM_N];
     wm_atom_names[DeleteWindow] = "WM_DELETE_WINDOW";
