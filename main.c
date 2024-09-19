@@ -15,6 +15,7 @@ enum {
     DesktopViewport,
     FrameExtents,
     NumberOfDesktops,
+    RequestFrameExtents,
     Supported,
     SupportingWMCheck,
     WMDesktop,
@@ -54,6 +55,7 @@ static void focus(Window);
 static void pop(Window);
 static void resize(Client *);
 static void send_event(Window, Atom);
+static void set_frame_extents(Window);
 static void set_state(Window, long);
 static void update_client_list(Window, Bool);
 static void update_client_list_stacking(void);
@@ -134,12 +136,11 @@ void add(const Window w) {
         &head->height, &(unsigned int) {None}, &(unsigned int) {None});
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
-    XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
         GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask);
     XSetWindowBorderWidth(d, w, (unsigned int) bw);
+    set_frame_extents(w);
     resize(head);
     // Map and focus
     set_state(w, NormalState);
@@ -209,6 +210,11 @@ void send_event(const Window w, const Atom protocol) {
     XSendEvent(d, w, False, NoEventMask, &e);
 }
 
+void set_frame_extents(const Window w) {
+    XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
+}
+
 void set_state(const Window w, const long state) {
     XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
         PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
@@ -263,6 +269,8 @@ void client_message(const XClientMessageEvent *e) {
         pop(w);
     else if (msg == net_atoms[CloseWindow])
         delete(w);
+    else if (msg == net_atoms[RequestFrameExtents])
+        set_frame_extents(w);
 }
 
 void configure_notify(const XConfigureEvent *e) {
@@ -387,6 +395,7 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[DesktopViewport] = "_NET_DESKTOP_VIEWPORT";
     net_atom_names[FrameExtents] = "_NET_FRAME_EXTENTS";
     net_atom_names[NumberOfDesktops] = "_NET_NUMBER_OF_DESKTOPS";
+    net_atom_names[RequestFrameExtents] = "_NET_REQUEST_FRAME_EXTENTS";
     net_atom_names[Supported] = "_NET_SUPPORTED";
     net_atom_names[SupportingWMCheck] = "_NET_SUPPORTING_WM_CHECK";
     net_atom_names[WMDesktop] = "_NET_WM_DESKTOP";
