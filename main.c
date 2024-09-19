@@ -38,8 +38,9 @@ enum {
 
 typedef struct Client {
     const Window w;
-    const Bool floating;
-    int x, y, width, height;
+    Bool floating;
+    int x, y;
+    unsigned int width, height;
     struct Client *next;
 } Client;
 
@@ -75,8 +76,8 @@ static void quit(void);
 static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
 static Bool running = True;
 static Display *d;
-static int sh, sw; // screen-width and -height
-static int bw = 1; // border-width
+static unsigned int sw, sh; // screen-width and -height
+static unsigned int bw = 1; // border-width
 static Window r; // root-window
 
 // Linked-List
@@ -102,27 +103,22 @@ int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
 void add(const Window w) {
     if (get_client(w))
         return;
+    // Initialize client and add to list
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w, False,
+        (int) -bw, (int) -bw, sw, sh, head}, sizeof(Client));
+    clients_n++;
+    update_client_list(w, True);
+    update_client_list_stacking();
     // Check if window is floating
     unsigned char *prop = NULL;
     XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False, XA_ATOM, &(Atom) {None},
         &(int) {None}, &(unsigned long) {None}, &(unsigned long) {None}, &prop);
     const Atom type = prop ? *(Atom *)prop : None;
-    const Bool floating = type == None || type == net_atoms[WMWindowTypeNormal]
-        ? False : True;
+    head->floating = type != None && type != net_atoms[WMWindowTypeNormal];
     XFree(prop);
-    // Get geometry
-    int x = -bw, y = -bw;
-    unsigned int width  = (unsigned int) sw;
-    unsigned int height = (unsigned int) sh;
-    XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
-        &(unsigned int) {None}, &(unsigned int) {None});
-    // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w, floating,
-        x, y, (int) width, (int) height, head}, sizeof(Client));
-    clients_n++;
-    update_client_list(w, True);
-    update_client_list_stacking();
-    // Configure, map and focus window
+    // Configure
+    XGetGeometry(d, w, &(Window) {None}, &head->x, &head->y, &head->width,
+        &head->height, &(unsigned int) {None}, &(unsigned int) {None});
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
@@ -132,6 +128,7 @@ void add(const Window w) {
     XSelectInput(d, w, FocusChangeMask);
     XSetWindowBorderWidth(d, w, (unsigned int) bw);
     resize(head);
+    // Map and focus
     set_state(w, NormalState);
     XMapWindow(d, w);
     focus(w);
@@ -160,24 +157,22 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
-    int x = -bw, y = -bw, width = sw, height = sh;
+    int x = (int) -bw, y = (int) -bw;
+    unsigned int width = sw, height = sh;
     if (c->floating) {
-        // Center window
-        width = c->width, height = c->height;
-        x = (sw - (width  + bw * 2)) / 2;
-        y = (sh - (height + bw * 2)) / 2;
-        // Maximize if there are no gaps
-        if (x <= 0) {
-            x = -bw;
-            width = sw;
+        const unsigned int true_width = c->width  + bw * 2;
+        if (true_width < sw) {
+            x = (int) (sw - true_width) / 2;
+            width = c->width;
         }
-        if (y <= 0) {
-            y = -bw;
-            height = sh;
+        const unsigned int true_height = c->height  + bw * 2;
+        if (true_height < sh) {
+            y = (int) (sh - true_height) / 2;
+            height = c->height;
         }
     }
     c->x = x, c->y = y, c->width = width, c->height = height;
-    XMoveResizeWindow(d, c->w, x, y, (unsigned int) width, (unsigned int) height);
+    XMoveResizeWindow(d, c->w, x, y, width, height);
 }
 
 void send_event(const Window w, const Atom protocol) {
@@ -261,17 +256,19 @@ void client_message(const XClientMessageEvent *e) {
 void configure_notify(const XConfigureEvent *e) {
     Client *c;
     const Window w = e->window;
-    const int x = e->x, y = e->y, wh = e->height, ww = e->width;
-    if (w == r && (wh != sh || ww != sw)) {
-        sh = wh;
-        sw = ww;
+    const unsigned int width  = (unsigned int) e->width;
+    const unsigned int height = (unsigned int) e->height;
+    if (w == r && (sw != width || sh != height)) {
+        sh = height;
+        sw = width;
         for (c = head; c; c = c->next)
             resize(c);
     } else if ((c = get_client(w))) {
-        if (e->border_width != bw)
-            XSetWindowBorderWidth(d, w, (unsigned int) bw);
-        if (x != c->x || y != c->y || ww != c->width || wh != c->height) {
-            c->x = x, c->y = y, c->width = ww, c->height = wh;
+        if ((unsigned int) e->border_width != bw)
+            XSetWindowBorderWidth(d, w, bw);
+        const int x = e->x, y = e->y;
+        if (x != c->x || y != c->y || width != c->width || height != c->height) {
+            c->x = x, c->y = y, c->width = width, c->height = height;
             resize(c);
         }
     }
@@ -359,8 +356,8 @@ int main(const int argc, const char *argv[]) {
     XSetErrorHandler(xerror);
     // Variables
     const int s = XDefaultScreen(d);
-    sh = XDisplayHeight(d, s);
-    sw = XDisplayWidth(d, s);
+    sh = (unsigned int) XDisplayHeight(d, s);
+    sw = (unsigned int) XDisplayWidth(d, s);
     // ICCCM atoms
     char *wm_atom_names[WM_N];
     wm_atom_names[DeleteWindow] = "WM_DELETE_WINDOW";
