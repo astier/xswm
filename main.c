@@ -12,6 +12,7 @@ enum {
     ClientListStacking,
     CloseWindow,
     CurrentDesktop,
+    DesktopGeometry,
     DesktopViewport,
     FrameExtents,
     NumberOfDesktops,
@@ -74,6 +75,7 @@ static void resize(Client *);
 static Bool send_event(Window, Atom);
 static int get_state(Window);
 static int xerror(Display *, XErrorEvent *);
+static void set_desktop_geometry(void);
 static void set_frame_extents(Window);
 static void set_state(Window, long);
 static void update_client_list(Window, Bool);
@@ -115,6 +117,7 @@ void configure_notify(const XConfigureEvent *e) {
     if (w == r && (sw != width || sh != height)) {
         sh = height;
         sw = width;
+        set_desktop_geometry();
         for (c = head; c; c = c->next)
             resize(c);
     } else if ((c = get_client(w))) {
@@ -331,6 +334,11 @@ int get_state(const Window w) {
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
 
+void set_desktop_geometry(void) {
+    XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
+}
+
 void set_frame_extents(const Window w) {
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
@@ -412,6 +420,7 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[ClientListStacking] = "_NET_CLIENT_LIST_STACKING";
     net_atom_names[CloseWindow] = "_NET_CLOSE_WINDOW";
     net_atom_names[CurrentDesktop] = "_NET_CURRENT_DESKTOP";
+    net_atom_names[DesktopGeometry] = "_NET_DESKTOP_GEOMETRY";
     net_atom_names[DesktopViewport] = "_NET_DESKTOP_VIEWPORT";
     net_atom_names[FrameExtents] = "_NET_FRAME_EXTENTS";
     net_atom_names[NumberOfDesktops] = "_NET_NUMBER_OF_DESKTOPS";
@@ -450,6 +459,7 @@ int main(const int argc, const char *argv[]) {
         PropModeReplace, (unsigned char *) (long []) {0, 0}, 2);
     XChangeProperty(d, r, net_atoms[NumberOfDesktops], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {1}, 1);
+    set_desktop_geometry();
     // WM configuration
     XSelectInput(d, r, SubstructureRedirectMask | SubstructureNotifyMask
         | StructureNotifyMask | PropertyChangeMask);
