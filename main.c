@@ -111,11 +111,24 @@ void add(const Window w) {
     update_client_list_stacking();
     // Check if window is floating
     unsigned char *prop = NULL;
-    XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False, XA_ATOM, &(Atom) {None},
-        &(int) {None}, &(unsigned long) {None}, &(unsigned long) {None}, &prop);
-    const Atom type = prop ? *(Atom *)prop : None;
-    head->floating = type != None && type != net_atoms[WMWindowTypeNormal];
-    XFree(prop);
+    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
+            XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
+            &(unsigned long) {None}, &prop) == Success) {
+        Atom type;
+        if (prop)
+            type = *(Atom *) prop;
+        else {
+            if (XGetTransientForHint(d, w, &(Window) {None}))
+                type = net_atoms[WMWindowTypeDialog];
+            else
+                type = net_atoms[WMWindowTypeNormal];
+            XChangeProperty(d, w, net_atoms[WMWindowType], XA_ATOM, 32,
+                PropModeReplace, (unsigned char *) &type, 1);
+        }
+        head->floating = type != net_atoms[WMWindowTypeNormal];
+        if (prop)
+            XFree(prop);
+    }
     // Configure
     XGetGeometry(d, w, &(Window) {None}, &head->x, &head->y, &head->width,
         &head->height, &(unsigned int) {None}, &(unsigned int) {None});
