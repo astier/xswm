@@ -1,8 +1,8 @@
 ## Description
 
-[xswm](https://github.com/astier/xswm) is a stacking and non-reparenting
-window-manager for X and has only one task. Open every window maximized. Zero
-configuration required. No built-in:
+[xswm](https://github.com/astier/xswm) is a minimal stacking and
+non-reparenting window-manager for X and has only one task. Open every window
+maximized. Zero configuration required. No built-in:
 
 - Hotkeys
 - Statusbar
