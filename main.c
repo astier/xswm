@@ -168,13 +168,8 @@ void focus_in(const XFocusInEvent *e) {
 void map_request(const Window w) {
     if (get_client(w))
         return;
-    // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client)
-        {w, False, 0, 0, sw, sh, head}, sizeof(Client));
-    clients_n++;
-    update_client_list(w, True);
-    update_client_list_stacking();
     // Check if window is floating based on window-type
+    Bool floating = False;
     unsigned char *prop = NULL;
     if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
             XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
@@ -190,20 +185,29 @@ void map_request(const Window w) {
             XChangeProperty(d, w, net_atoms[WMWindowType], XA_ATOM, 32,
                 PropModeReplace, (unsigned char *) &type, 1);
         }
-        head->floating = type != net_atoms[WMWindowTypeNormal];
+        floating = type != net_atoms[WMWindowTypeNormal];
         if (prop)
             XFree(prop);
     }
     // Check if window is floating based on size-hints
     XSizeHints hints;
-    if (!head->floating && XGetWMNormalHints(d, w, &hints, &(long) {None})
+    if (!floating && XGetWMNormalHints(d, w, &hints, &(long) {None})
     && (hints.flags & PMinSize) && (hints.flags & PMaxSize)
     && hints.min_width  == hints.max_width
     && hints.min_height == hints.max_height)
-        head->floating = True;
+        floating = True;
+    // Get geometry
+    int x = 0, y = 0;
+    unsigned int width = sw, height = sh;
+    XGetGeometry(d, w, &(Window) {None}, &x, &y, &width,
+        &height, &(unsigned int) {None}, &(unsigned int) {None});
+    // Initialize client and add to list
+    memcpy(head = malloc(sizeof(Client)), &(Client)
+        {w, floating, x, y, width, height, head}, sizeof(Client));
+    clients_n++;
+    update_client_list(w, True);
+    update_client_list_stacking();
     // Configure
-    XGetGeometry(d, w, &(Window) {None}, &head->x, &head->y, &head->width,
-        &head->height, &(unsigned int) {None}, &(unsigned int) {None});
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
