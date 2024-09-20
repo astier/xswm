@@ -162,7 +162,7 @@ void map_request(const Window w) {
     clients_n++;
     update_client_list(w, True);
     update_client_list_stacking();
-    // Check if window is floating
+    // Check if window is floating based on window-type
     unsigned char *prop = NULL;
     if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
             XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
@@ -182,6 +182,13 @@ void map_request(const Window w) {
         if (prop)
             XFree(prop);
     }
+    // Check if window is floating based on size-hints
+    XSizeHints hints;
+    if (!head->floating && XGetWMNormalHints(d, w, &hints, &(long) {None})
+    && (hints.flags & PMinSize) && (hints.flags & PMaxSize)
+    && hints.min_width  == hints.max_width
+    && hints.min_height == hints.max_height)
+        head->floating = True;
     // Configure
     XGetGeometry(d, w, &(Window) {None}, &head->x, &head->y, &head->width,
         &head->height, &(unsigned int) {None}, &(unsigned int) {None});
