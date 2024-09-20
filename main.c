@@ -205,7 +205,7 @@ void map_request(const Window w) {
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
         GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask);
-    XSetWindowBorderWidth(d, w, (unsigned int) bw);
+    XSetWindowBorderWidth(d, w, bw);
     set_frame_extents(w);
     resize(head);
     // Map and focus
