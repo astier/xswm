@@ -444,18 +444,18 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[WMWindowTypeSplash] = "_NET_WM_WINDOW_TYPE_SPLASH";
     net_atom_names[Workarea] = "_NET_WORKAREA";
     XInternAtoms(d, net_atom_names, Net_N, False, net_atoms);
-    // EWMH configuration
-    const Window wm_check = XCreateSimpleWindow(d, r, 0, 0, 1, 1, 0, 0, 0);
-    const Atom utf8string = XInternAtom(d, "UTF8_STRING", False);
+    // Indicate EWMH-Compliance
     const char wm_name[] = "xswm";
-    XChangeProperty(d, wm_check, net_atoms[WMName], utf8string, 8,
-        PropModeReplace, (unsigned char *) &wm_name, (int) strlen(wm_name));
-    XChangeProperty(d, r, net_atoms[Supported], XA_ATOM, 32,
-        PropModeReplace, (unsigned char *) &net_atoms, Net_N);
+    const int wm_name_len = (int) strlen(wm_name);
+    const Atom utf8string = XInternAtom(d, "UTF8_STRING", False);
+    const Window wm_check = XCreateSimpleWindow(d, r, 0, 0, 1, 1, 0, 0, 0);
     XChangeProperty(d, r, net_atoms[SupportingWMCheck], XA_WINDOW, 32,
         PropModeReplace, (unsigned char *) &wm_check, 1);
     XChangeProperty(d, wm_check, net_atoms[SupportingWMCheck], XA_WINDOW, 32,
         PropModeReplace, (unsigned char *) &wm_check, 1);
+    XChangeProperty(d, wm_check, net_atoms[WMName], utf8string, 8,
+        PropModeReplace, (unsigned char *) &wm_name, wm_name_len);
+    // EWMH-Configuration
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW, 32,
         PropModeReplace, None, 0);
     XChangeProperty(d, r, net_atoms[ClientList], XA_WINDOW, 32,
@@ -468,6 +468,10 @@ int main(const int argc, const char *argv[]) {
         PropModeReplace, (unsigned char *) (long []) {0, 0}, 2);
     XChangeProperty(d, r, net_atoms[NumberOfDesktops], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {1}, 1);
+    XChangeProperty(d, r, net_atoms[Supported], XA_ATOM, 32,
+        PropModeReplace, (unsigned char *) &net_atoms, Net_N);
+    XChangeProperty(d, r, net_atoms[WMName], utf8string, 8,
+        PropModeReplace, (unsigned char *) &wm_name, wm_name_len);
     set_desktop_geometry();
     set_workarea();
     // WM configuration
