@@ -26,6 +26,7 @@ enum {
     WMWindowTypeDialog,
     WMWindowTypeNormal,
     WMWindowTypeSplash,
+    Workarea,
     Net_N
 };
 
@@ -78,6 +79,7 @@ static int xerror(Display *, XErrorEvent *);
 static void set_desktop_geometry(void);
 static void set_frame_extents(Window);
 static void set_state(Window, long);
+static void set_workarea(void);
 static void update_client_list(Window, Bool);
 static void update_client_list_stacking(void);
 
@@ -118,6 +120,7 @@ void configure_notify(const XConfigureEvent *e) {
         sh = height;
         sw = width;
         set_desktop_geometry();
+        set_workarea();
         for (c = head; c; c = c->next)
             resize(c);
     } else if ((c = get_client(w))) {
@@ -349,6 +352,11 @@ void set_state(const Window w, const long state) {
         PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
 }
 
+void set_workarea(void) {
+    XChangeProperty(d, r, net_atoms[Workarea], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {0, 0, sw, sh}, 4);
+}
+
 void update_client_list(const Window w, const Bool add) {
     if (add) {
         XChangeProperty(d, r, net_atoms[ClientList], XA_WINDOW, 32,
@@ -434,6 +442,7 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
     net_atom_names[WMWindowTypeNormal] = "_NET_WM_WINDOW_TYPE_NORMAL";
     net_atom_names[WMWindowTypeSplash] = "_NET_WM_WINDOW_TYPE_SPLASH";
+    net_atom_names[Workarea] = "_NET_WORKAREA";
     XInternAtoms(d, net_atom_names, Net_N, False, net_atoms);
     // EWMH configuration
     const Window wm_check = XCreateSimpleWindow(d, r, 0, 0, 1, 1, 0, 0, 0);
@@ -460,6 +469,7 @@ int main(const int argc, const char *argv[]) {
     XChangeProperty(d, r, net_atoms[NumberOfDesktops], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {1}, 1);
     set_desktop_geometry();
+    set_workarea();
     // WM configuration
     XSelectInput(d, r, SubstructureRedirectMask | SubstructureNotifyMask
         | StructureNotifyMask | PropertyChangeMask);
