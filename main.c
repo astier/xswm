@@ -22,6 +22,8 @@ enum {
     WMDesktop,
     WMFullPlacement,
     WMName,
+    WMState,
+    WMStateFullscreen,
     WMWindowType,
     WMWindowTypeDialog,
     WMWindowTypeNormal,
@@ -108,7 +110,7 @@ void button_press(const XButtonPressedEvent *e) {
 
 void client_message(const XClientMessageEvent *e) {
     const Window w = e->window;
-    const Client *c = get_client(w);
+    Client *c = get_client(w);
     if (!c)
         return;
     const Atom msg = e->message_type;
@@ -118,6 +120,19 @@ void client_message(const XClientMessageEvent *e) {
         delete(w);
     else if (msg == net_atoms[RequestFrameExtents])
         set_frame_extents(c);
+    else if (msg == net_atoms[WMState]) {
+        // Fixes windows which start out floating but immediately
+        // after mapping request fullscreen mode
+        const Atom *data = (Atom *) e->data.l;
+        if ((data[1] == net_atoms[WMStateFullscreen]
+        ||   data[2] == net_atoms[WMStateFullscreen])
+        &&   data[0] == 1 && c->floating) {
+            c->floating = False;
+            XSetWindowBorderWidth(d, w, 0);
+            set_frame_extents(c);
+            resize(c);
+        }
+    }
 }
 
 void configure_notify(const XConfigureEvent *e) {
@@ -462,6 +477,8 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[WMDesktop] = "_NET_WM_DESKTOP";
     net_atom_names[WMFullPlacement] = "_NET_WM_FULL_PLACEMENT";
     net_atom_names[WMName] = "_NET_WM_NAME";
+    net_atom_names[WMState] = "_NET_WM_STATE";
+    net_atom_names[WMStateFullscreen] = "_NET_WM_STATE_FULLSCREEN";
     net_atom_names[WMWindowType] = "_NET_WM_WINDOW_TYPE";
     net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
     net_atom_names[WMWindowTypeNormal] = "_NET_WM_WINDOW_TYPE_NORMAL";
