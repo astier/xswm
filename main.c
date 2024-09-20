@@ -518,5 +518,12 @@ int main(const int argc, const char *argv[]) {
             case UnmapNotify: unmap_notify(&e.xunmap); break;
         }
     }
+    // Clean-Up
+    XDestroyWindow(d, wm_check);
+    while (head) {
+        Client *old_head = head;
+        head = head->next;
+        free(old_head);
+    }
     XCloseDisplay(d);
 }
