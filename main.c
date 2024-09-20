@@ -77,7 +77,7 @@ static Bool send_event(Window, Atom);
 static int get_state(Window);
 static int xerror(Display *, XErrorEvent *);
 static void set_desktop_geometry(void);
-static void set_frame_extents(Window);
+static void set_frame_extents(const Client *);
 static void set_state(Window, long);
 static void set_workarea(void);
 static void update_client_list(Window, Bool);
@@ -108,7 +108,8 @@ void button_press(const XButtonPressedEvent *e) {
 
 void client_message(const XClientMessageEvent *e) {
     const Window w = e->window;
-    if (!get_client(w))
+    const Client *c = get_client(w);
+    if (!c)
         return;
     const Atom msg = e->message_type;
     if (msg == net_atoms[ActiveWindow])
@@ -116,7 +117,7 @@ void client_message(const XClientMessageEvent *e) {
     else if (msg == net_atoms[CloseWindow])
         delete(w);
     else if (msg == net_atoms[RequestFrameExtents])
-        set_frame_extents(w);
+        set_frame_extents(c);
 }
 
 void configure_notify(const XConfigureEvent *e) {
@@ -132,8 +133,11 @@ void configure_notify(const XConfigureEvent *e) {
         for (c = head; c; c = c->next)
             resize(c);
     } else if ((c = get_client(w))) {
-        if ((unsigned int) e->border_width != bw)
-            XSetWindowBorderWidth(d, w, bw);
+        if (c->floating) {
+            if (e->border_width != (int) bw)
+                XSetWindowBorderWidth(d, w, bw);
+        } else if (e->border_width != 0)
+                XSetWindowBorderWidth(d, w, 0);
         const int x = e->x, y = e->y;
         if (x != c->x || y != c->y || width != c->width || height != c->height) {
             c->x = x, c->y = y, c->width = width, c->height = height;
@@ -165,8 +169,8 @@ void map_request(const Window w) {
     if (get_client(w))
         return;
     // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w, False,
-        (int) -bw, (int) -bw, sw, sh, head}, sizeof(Client));
+    memcpy(head = malloc(sizeof(Client)), &(Client)
+        {w, False, 0, 0, sw, sh, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
     update_client_list_stacking();
@@ -205,8 +209,8 @@ void map_request(const Window w) {
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
         GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask);
-    XSetWindowBorderWidth(d, w, bw);
-    set_frame_extents(w);
+    XSetWindowBorderWidth(d, w, head->floating ? bw : 0);
+    set_frame_extents(head);
     resize(head);
     // Map and focus
     set_state(w, NormalState);
@@ -297,7 +301,7 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
-    int x = (int) -bw, y = (int) -bw;
+    int x = 0, y = 0;
     unsigned int width = sw, height = sh;
     if (c->floating) {
         const unsigned int true_width = c->width  + bw * 2;
@@ -357,9 +361,10 @@ void set_desktop_geometry(void) {
         PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
 }
 
-void set_frame_extents(const Window w) {
-    XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
+void set_frame_extents(const Client *c) {
+    const long fw = c->floating ? bw : 0;
+    XChangeProperty(d, c->w, net_atoms[FrameExtents], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {fw, fw, fw, fw}, 4);
 }
 
 void set_state(const Window w, const long state) {
