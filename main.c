@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// EWMH atoms
+// EWMH-Atoms
 enum {
     ActiveWindow,
     ClientList,
@@ -30,7 +30,7 @@ enum {
     Net_N
 };
 
-// ICCCM atoms
+// ICCCM-Atoms
 enum {
     DeleteWindow,
     Protocols,
@@ -72,7 +72,7 @@ static void focus(Window);
 static void pop(Window);
 static void resize(Client *);
 
-// X-Helpers
+// X-Utilities
 static Bool send_event(Window, Atom);
 static int get_state(Window);
 static int xerror(Display *, XErrorEvent *);
@@ -83,14 +83,22 @@ static void set_workarea(void);
 static void update_client_list(Window, Bool);
 static void update_client_list_stacking(void);
 
-// Variables
-static Atom wm_atoms[WM_N], net_atoms[Net_N], XA_WM_CMD;
-static Bool running = True;
-static Client *head; // Top-window and start of a linked-list
-static Display *d;
-static int clients_n = 0; // Number of clients in list
+// Atoms
+static Atom net_atoms[Net_N];
+static Atom wm_atoms[WM_N];
+static Atom XA_WM_CMD;
+
+// Geometry
 static unsigned int bw = 1; // border-width
 static unsigned int sw, sh; // screen-width and -height
+
+// Linked-List
+static Client *head; // Top-window and start of a linked-list
+static int clients_n = 0; // Number of clients in list
+
+// Misc
+static Bool running = True;
+static Display *d;
 static Window r; // root-window
 
 void button_press(const XButtonPressedEvent *e) {
