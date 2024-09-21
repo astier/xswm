@@ -136,42 +136,42 @@ void client_message(const XClientMessageEvent *e) {
 }
 
 void configure_notify(const XConfigureEvent *e) {
-    Client *c;
-    const Window w = e->window;
     const unsigned int width  = (unsigned int) e->width;
     const unsigned int height = (unsigned int) e->height;
-    if (w == r && (sw != width || sh != height)) {
-        sh = height;
-        sw = width;
-        set_desktop_geometry();
-        set_workarea();
-        for (c = head; c; c = c->next)
-            resize(c);
-    } else if ((c = get_client(w))) {
+    if (e->window != r || (sw == width && sh == height))
+        return;
+    sw = width;
+    sh = height;
+    set_workarea();
+    set_desktop_geometry();
+    for (Client *c = head; c; c = c->next)
+        resize(c);
+}
+
+void configure_request(const XConfigureRequestEvent *e) {
+    Client *c;
+    const Window w = e->window;
+    if ((c = get_client(w))) {
         if (c->floating) {
             if (e->border_width != (int) bw)
                 XSetWindowBorderWidth(d, w, bw);
         } else if (e->border_width != 0)
                 XSetWindowBorderWidth(d, w, 0);
-        const int x = e->x, y = e->y;
-        if (x != c->x || y != c->y || width != c->width || height != c->height) {
-            c->x = x, c->y = y, c->width = width, c->height = height;
-            resize(c);
-        }
+        c->x = e->x, c->y = e->y;
+        c->width  = (unsigned int) e->width;
+        c->height = (unsigned int) e->height;
+        resize(c);
+    } else {
+        XWindowChanges wc;
+        wc.x = e->x;
+        wc.y = e->y;
+        wc.width = e->width;
+        wc.height = e->height;
+        wc.border_width = e->border_width;
+        wc.sibling = e->above;
+        wc.stack_mode = e->detail;
+        XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
     }
-}
-
-void configure_request(const XConfigureRequestEvent *e) {
-    const Window w = e->window;
-    XWindowChanges wc;
-    wc.x = e->x;
-    wc.y = e->y;
-    wc.width = e->width;
-    wc.height = e->height;
-    wc.border_width = e->border_width;
-    wc.sibling = e->above;
-    wc.stack_mode = e->detail;
-    XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
 }
 
 // Prevent bad clients from stealing focus
