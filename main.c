@@ -150,12 +150,25 @@ void configure_request(const XConfigureRequestEvent *e) {
     Client *c;
     const Window w = e->window;
     if ((c = get_client(w))) {
-        if (e->border_width != (int) bw)
-            XSetWindowBorderWidth(d, w, bw);
-        c->x = e->x, c->y = e->y;
-        c->width  = (unsigned int) e->width;
-        c->height = (unsigned int) e->height;
-        resize(c);
+        if (c->floating) {
+            c->x = e->x, c->y = e->y;
+            c->width = (unsigned int) e->width;
+            c->height = (unsigned int) e->height;
+            resize(c);
+        }
+        XConfigureEvent ce;
+        ce.type = ConfigureNotify;
+        ce.display = d;
+        ce.event = w;
+        ce.window = w;
+        ce.x = c->x;
+        ce.y = c->y;
+        ce.width = (int) c->width;
+        ce.height = (int) c->height;
+        ce.border_width = (int) bw;
+        ce.above = None;
+        ce.override_redirect = False;
+        XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &ce);
     } else {
         XWindowChanges wc;
         wc.x = e->x;
@@ -167,6 +180,7 @@ void configure_request(const XConfigureRequestEvent *e) {
         wc.stack_mode = e->detail;
         XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
     }
+    XSync(d, False);
 }
 
 // Prevent bad clients from stealing focus
