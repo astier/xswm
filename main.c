@@ -77,7 +77,6 @@ static void resize(Client *);
 static Bool send_event(Window, Atom);
 static int get_state(Window);
 static int xerror(Display *, XErrorEvent *);
-static void send_configure_event(const Client *);
 static void set_desktop_geometry(void);
 static void set_frame_extents(Window);
 static void set_state(Window, long);
@@ -155,8 +154,20 @@ void configure_request(const XConfigureRequestEvent *e) {
             c->width = e->width;
             c->height = e->height;
             resize(c);
-        } else
-            send_configure_event(c);
+        }
+        XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
+            .type = ConfigureNotify,
+            .display = d,
+            .event = c->w,
+            .window = c->w,
+            .x = c->x,
+            .y = c->y,
+            .width = c->width,
+            .height = c->height,
+            .border_width = bw,
+            .above = None,
+            .override_redirect = False,
+        });
     } else {
         XConfigureWindow(d, w, (unsigned int) e->value_mask, &(XWindowChanges) {
             .x = e->x,
@@ -327,7 +338,6 @@ void resize(Client *c) {
         c->x = -bw, c->y = -bw, c->width = sw, c->height = sh;
     XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
         (unsigned int) c->height);
-    send_configure_event(c);
 }
 
 Bool send_event(const Window w, const Atom protocol) {
@@ -366,22 +376,6 @@ int get_state(const Window w) {
 }
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
-
-void send_configure_event(const Client *c) {
-    XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
-        .type = ConfigureNotify,
-        .display = d,
-        .event = c->w,
-        .window = c->w,
-        .x = c->x,
-        .y = c->y,
-        .width = c->width,
-        .height = c->height,
-        .border_width = bw,
-        .above = None,
-        .override_redirect = False,
-    });
-}
 
 void set_desktop_geometry(void) {
     XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
