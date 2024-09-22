@@ -74,7 +74,7 @@ static void pop(Window);
 static void resize(Client *);
 
 // X-Utilities
-static Bool send_event(Window, Atom);
+static Bool send_protocol(Window, Atom);
 static int get_state(Window);
 static int xerror(Display *, XErrorEvent *);
 static void set_desktop_geometry(void);
@@ -302,7 +302,7 @@ void last(void) { if (clients_n > 1) pop(head->next->w); }
 void quit(void) { running = False; }
 
 void delete(const Window w) {
-    if (!send_event(w, wm_atoms[DeleteWindow]))
+    if (!send_protocol(w, wm_atoms[DeleteWindow]))
         XKillClient(d, w);
 }
 
@@ -310,7 +310,7 @@ void focus(const Window w) {
     XSetInputFocus(d, w, RevertToPointerRoot, CurrentTime);
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
-    send_event(w, wm_atoms[TakeFocus]);
+    send_protocol(w, wm_atoms[TakeFocus]);
 }
 
 void pop(const Window w) {
@@ -340,7 +340,7 @@ void resize(Client *c) {
         (unsigned int) c->height);
 }
 
-Bool send_event(const Window w, const Atom protocol) {
+Bool send_protocol(const Window w, const Atom protocol) {
     Atom *protocols;
     int count;
     if (!XGetWMProtocols(d, w, &protocols, &count))
