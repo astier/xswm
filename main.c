@@ -158,15 +158,15 @@ void configure_request(const XConfigureRequestEvent *e) {
         } else
             send_configure_event(c);
     } else {
-        XWindowChanges wc;
-        wc.x = e->x;
-        wc.y = e->y;
-        wc.width = e->width;
-        wc.height = e->height;
-        wc.border_width = e->border_width;
-        wc.sibling = e->above;
-        wc.stack_mode = e->detail;
-        XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
+        XConfigureWindow(d, w, (unsigned int) e->value_mask, &(XWindowChanges) {
+            .x = e->x,
+            .y = e->y,
+            .width = e->width,
+            .height = e->height,
+            .border_width = e->border_width,
+            .sibling = e->above,
+            .stack_mode = e->detail,
+        });
     }
 }
 
@@ -341,14 +341,14 @@ Bool send_event(const Window w, const Atom protocol) {
     XFree(protocols);
     if (!protocol_exists)
         return False;
-    XEvent e;
-    e.type = ClientMessage;
-    e.xclient.window = w;
-    e.xclient.message_type = wm_atoms[Protocols];
-    e.xclient.format = 32;
-    e.xclient.data.l[0] = (long) protocol;
-    e.xclient.data.l[1] = CurrentTime;
-    return XSendEvent(d, w, False, NoEventMask, &e);
+    return XSendEvent(d, w, False, NoEventMask, (XEvent *) &(XClientMessageEvent) {
+        .type = ClientMessage,
+        .window = w,
+        .message_type = wm_atoms[Protocols],
+        .format = 32,
+        .data.l[0] = (long) protocol,
+        .data.l[1] = CurrentTime,
+    });
 }
 
 int get_state(const Window w) {
@@ -368,19 +368,19 @@ int get_state(const Window w) {
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
 
 void send_configure_event(const Client *c) {
-    XConfigureEvent e;
-    e.type = ConfigureNotify;
-    e.display = d;
-    e.event = c->w;
-    e.window = c->w;
-    e.x = c->x;
-    e.y = c->y;
-    e.width = c->width;
-    e.height = c->height;
-    e.border_width = bw;
-    e.above = None;
-    e.override_redirect = False;
-    XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &e);
+    XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
+        .type = ConfigureNotify,
+        .display = d,
+        .event = c->w,
+        .window = c->w,
+        .x = c->x,
+        .y = c->y,
+        .width = c->width,
+        .height = c->height,
+        .border_width = bw,
+        .above = None,
+        .override_redirect = False,
+    });
 }
 
 void set_desktop_geometry(void) {
