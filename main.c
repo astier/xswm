@@ -78,6 +78,7 @@ static void resize(Client *);
 static Bool send_event(Window, Atom);
 static int get_state(Window);
 static int xerror(Display *, XErrorEvent *);
+static void send_configure_event(const Client *);
 static void set_desktop_geometry(void);
 static void set_frame_extents(Window);
 static void set_state(Window, long);
@@ -155,20 +156,8 @@ void configure_request(const XConfigureRequestEvent *e) {
             c->width = (unsigned int) e->width;
             c->height = (unsigned int) e->height;
             resize(c);
-        }
-        XConfigureEvent ce;
-        ce.type = ConfigureNotify;
-        ce.display = d;
-        ce.event = w;
-        ce.window = w;
-        ce.x = c->x;
-        ce.y = c->y;
-        ce.width = (int) c->width;
-        ce.height = (int) c->height;
-        ce.border_width = (int) bw;
-        ce.above = None;
-        ce.override_redirect = False;
-        XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &ce);
+        } else
+            send_configure_event(c);
     } else {
         XWindowChanges wc;
         wc.x = e->x;
@@ -180,7 +169,6 @@ void configure_request(const XConfigureRequestEvent *e) {
         wc.stack_mode = e->detail;
         XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
     }
-    XSync(d, False);
 }
 
 // Prevent bad clients from stealing focus
@@ -339,6 +327,7 @@ void resize(Client *c) {
     } else
         c->x = (int) -bw, c->y = (int) -bw, c->width = sw, c->height = sh;
     XMoveResizeWindow(d, c->w, c->x, c->y, c->width, c->height);
+    send_configure_event(c);
 }
 
 Bool send_event(const Window w, const Atom protocol) {
@@ -377,6 +366,23 @@ int get_state(const Window w) {
 }
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
+
+void send_configure_event(const Client *c) {
+    XConfigureEvent e;
+    e.type = ConfigureNotify;
+    e.display = d;
+    e.event = c->w;
+    e.window = c->w;
+    e.x = c->x;
+    e.y = c->y;
+    e.width = (int) c->width;
+    e.height = (int) c->height;
+    e.border_width = (int) bw;
+    e.above = None;
+    e.override_redirect = False;
+    XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &e);
+    XSync(d, False);
+}
 
 void set_desktop_geometry(void) {
     XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
