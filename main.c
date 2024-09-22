@@ -221,8 +221,9 @@ void map_request(const Window w) {
     // Get geometry
     int x = -bw, y = -bw;
     unsigned int width = (unsigned int) sw, height = (unsigned int) sh;
-    XGetGeometry(d, w, &(Window) {None}, &x, &y, &width,
-        &height, &(unsigned int) {None}, &(unsigned int) {None});
+    if (floating)
+        XGetGeometry(d, w, &(Window) {None}, &x, &y, &width,
+            &height, &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
     memcpy(head = malloc(sizeof(Client)), &(Client) {w, floating,
         x, y, (int) width, (int) height, head}, sizeof(Client));
