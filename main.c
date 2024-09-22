@@ -150,7 +150,8 @@ void configure_request(const XConfigureRequestEvent *e) {
     const Window w = e->window;
     if ((c = get_client(w))) {
         if (c->floating) {
-            c->x = e->x, c->y = e->y;
+            c->x = e->x;
+            c->y = e->y;
             c->width = e->width;
             c->height = e->height;
             resize(c);
@@ -335,8 +336,12 @@ void resize(Client *c) {
         const int true_height = c->height + bw * 2;
         if (true_height < sh)
             c->y = (sh - true_height) / 2;
-    } else
-        c->x = -bw, c->y = -bw, c->width = sw, c->height = sh;
+    } else {
+        c->x = -bw;
+        c->y = -bw;
+        c->width = sw;
+        c->height = sh;
+    }
     XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
         (unsigned int) c->height);
 }
