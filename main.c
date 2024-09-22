@@ -44,8 +44,7 @@ enum {
 typedef struct Client {
     const Window w;
     Bool floating;
-    int x, y;
-    unsigned int width, height;
+    int x, y, width, height;
     struct Client *next;
 } Client;
 
@@ -92,8 +91,8 @@ static Atom wm_atoms[WM_N];
 static Atom XA_WM_CMD;
 
 // Geometry
-static unsigned int bw = 1; // border-width
-static unsigned int sw, sh; // screen-width and -height
+static int bw = 1; // border-width
+static int sw, sh; // screen-width and -height
 
 // Linked-List
 static Client *head; // Top-window and start of a linked-list
@@ -135,8 +134,8 @@ void client_message(const XClientMessageEvent *e) {
 }
 
 void configure_notify(const XConfigureEvent *e) {
-    const unsigned int width  = (unsigned int) e->width;
-    const unsigned int height = (unsigned int) e->height;
+    const int width  = e->width;
+    const int height = e->height;
     if (e->window != r || (sw == width && sh == height))
         return;
     sw = width;
@@ -153,8 +152,8 @@ void configure_request(const XConfigureRequestEvent *e) {
     if ((c = get_client(w))) {
         if (c->floating) {
             c->x = e->x, c->y = e->y;
-            c->width = (unsigned int) e->width;
-            c->height = (unsigned int) e->height;
+            c->width = e->width;
+            c->height = e->height;
             resize(c);
         } else
             send_configure_event(c);
@@ -210,13 +209,13 @@ void map_request(const Window w) {
     && hints.min_height == hints.max_height)
         floating = True;
     // Get geometry
-    int x = (int) -bw, y = (int) -bw;
-    unsigned int width = sw, height = sh;
+    int x = -bw, y = -bw;
+    unsigned int width = (unsigned int) sw, height = (unsigned int) sh;
     XGetGeometry(d, w, &(Window) {None}, &x, &y, &width,
         &height, &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client)
-        {w, floating, x, y, width, height, head}, sizeof(Client));
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w, floating,
+        x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
     update_client_list_stacking();
@@ -226,7 +225,7 @@ void map_request(const Window w) {
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
         GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask);
-    XSetWindowBorderWidth(d, w, bw);
+    XSetWindowBorderWidth(d, w, (unsigned int) bw);
     set_frame_extents(w);
     resize(head);
     // Map and focus
@@ -320,15 +319,16 @@ void pop(const Window w) {
 
 void resize(Client *c) {
     if (c->floating) {
-        const unsigned int true_width = c->width  + bw * 2;
+        const int true_width = c->width  + bw * 2;
         if (true_width < sw)
-            c->x = (int) (sw - true_width) / 2;
-        const unsigned int true_height = c->height  + bw * 2;
+            c->x = (sw - true_width) / 2;
+        const int true_height = c->height  + bw * 2;
         if (true_height < sh)
-            c->y = (int) (sh - true_height) / 2;
+            c->y = (sh - true_height) / 2;
     } else
-        c->x = (int) -bw, c->y = (int) -bw, c->width = sw, c->height = sh;
-    XMoveResizeWindow(d, c->w, c->x, c->y, c->width, c->height);
+        c->x = -bw, c->y = -bw, c->width = sw, c->height = sh;
+    XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
+        (unsigned int) c->height);
     send_configure_event(c);
 }
 
@@ -377,9 +377,9 @@ void send_configure_event(const Client *c) {
     e.window = c->w;
     e.x = c->x;
     e.y = c->y;
-    e.width = (int) c->width;
-    e.height = (int) c->height;
-    e.border_width = (int) bw;
+    e.width = c->width;
+    e.height = c->height;
+    e.border_width = bw;
     e.above = None;
     e.override_redirect = False;
     XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &e);
@@ -461,8 +461,8 @@ int main(const int argc, const char *argv[]) {
     XSetErrorHandler(xerror);
     // Variables
     const int s = XDefaultScreen(d);
-    sh = (unsigned int) XDisplayHeight(d, s);
-    sw = (unsigned int) XDisplayWidth(d, s);
+    sh = XDisplayHeight(d, s);
+    sw = XDisplayWidth(d, s);
     // ICCCM atoms
     char *wm_atom_names[WM_N];
     wm_atom_names[DeleteWindow] = "WM_DELETE_WINDOW";
