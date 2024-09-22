@@ -167,7 +167,6 @@ void configure_request(const XConfigureRequestEvent *e) {
         wc.sibling = e->above;
         wc.stack_mode = e->detail;
         XConfigureWindow(d, w, (unsigned int) e->value_mask, &wc);
-        XSync(d, False);
     }
 }
 
@@ -301,7 +300,6 @@ void focus(const Window w) {
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
     send_event(w, wm_atoms[TakeFocus]);
-    XSync(d, False);
 }
 
 void pop(const Window w) {
@@ -383,7 +381,6 @@ void send_configure_event(const Client *c) {
     e.above = None;
     e.override_redirect = False;
     XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &e);
-    XSync(d, False);
 }
 
 void set_desktop_geometry(void) {
