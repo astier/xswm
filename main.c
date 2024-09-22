@@ -315,22 +315,16 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
-    int x = (int) -bw, y = (int) -bw;
-    unsigned int width = sw, height = sh;
     if (c->floating) {
         const unsigned int true_width = c->width  + bw * 2;
-        if (true_width < sw) {
-            x = (int) (sw - true_width) / 2;
-            width = c->width;
-        }
+        if (true_width < sw)
+            c->x = (int) (sw - true_width) / 2;
         const unsigned int true_height = c->height  + bw * 2;
-        if (true_height < sh) {
-            y = (int) (sh - true_height) / 2;
-            height = c->height;
-        }
-    }
-    c->x = x, c->y = y, c->width = width, c->height = height;
-    XMoveResizeWindow(d, c->w, x, y, width, height);
+        if (true_height < sh)
+            c->y = (int) (sh - true_height) / 2;
+    } else
+        c->x = (int) -bw, c->y = (int) -bw, c->width = sw, c->height = sh;
+    XMoveResizeWindow(d, c->w, c->x, c->y, c->width, c->height);
 }
 
 Bool send_event(const Window w, const Atom protocol) {
