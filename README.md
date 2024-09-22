@@ -1,17 +1,17 @@
 ## Description
 
-[xswm](https://github.com/astier/xswm) is a minimal stacking and
-non-reparenting window-manager for X and has only one task. Open every window
-maximized. Zero configuration required. No built-in:
+[xswm](https://github.com/astier/xswm) is a minimal window-manager for X with
+only one task. Open every window maximized. Zero configuration required. Due to
+its limited scope it is very minimal and performant (\~500 SLOC). No
+built-in:
 
 - Hotkeys
 - Statusbar
-- Window-Decoration
+- Window-Decorations
 - Window-Switcher
 - etc.
 
-Due to its limited scope it is very minimal and performant (\~500 SLOC). Tries
-to be
+Just a window-manager. Tries to be
 [ICCCM](https://www.x.org/releases/current/doc/xorg-docs/icccm/icccm.html) and
 [EWMH](https://specifications.freedesktop.org/wm-spec/latest/) compliant.
 
