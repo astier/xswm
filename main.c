@@ -334,12 +334,21 @@ void pop(const Window w) {
 
 void resize(Client *c) {
     if (c->floating) {
+        // Center if smaller than screen otherwise maximize
         const int true_width = c->width + bw * 2;
         if (true_width < sw)
             c->x = (sw - true_width) / 2;
+        else {
+            c->x = -bw;
+            c->width = sw;
+        }
         const int true_height = c->height + bw * 2;
         if (true_height < sh)
             c->y = (sh - true_height) / 2;
+        else {
+            c->y = -bw;
+            c->height = sh;
+        }
     } else {
         c->x = -bw;
         c->y = -bw;
