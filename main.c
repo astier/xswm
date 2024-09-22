@@ -150,10 +150,14 @@ void configure_request(const XConfigureRequestEvent *e) {
     const Window w = e->window;
     if ((c = get_client(w))) {
         if (c->floating) {
-            c->x = e->x;
-            c->y = e->y;
-            c->width = e->width;
-            c->height = e->height;
+            if (e->value_mask & CWX)
+                c->x = e->x;
+            if (e->value_mask & CWY)
+                c->y = e->y;
+            if (e->value_mask & CWWidth)
+                c->width = e->width;
+            if (e->value_mask & CWHeight)
+                c->height = e->height;
             resize(c);
         }
         XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
