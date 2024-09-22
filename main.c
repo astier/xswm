@@ -319,10 +319,10 @@ void pop(const Window w) {
 
 void resize(Client *c) {
     if (c->floating) {
-        const int true_width = c->width  + bw * 2;
+        const int true_width = c->width + bw * 2;
         if (true_width < sw)
             c->x = (sw - true_width) / 2;
-        const int true_height = c->height  + bw * 2;
+        const int true_height = c->height + bw * 2;
         if (true_height < sh)
             c->y = (sh - true_height) / 2;
     } else
