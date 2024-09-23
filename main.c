@@ -340,17 +340,20 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
-    int x = c->x, y = c->y, width = c->width, height = c->height;
+    int x = -bw, y = -bw, width = sw, height = sh;
     if (c->fixed || c->floating) {
         // Center if smaller than screen otherwise maximize
         const int true_width = c->width + bw * 2;
-        if (true_width < sw)
+        if (true_width < sw) {
             x = (sw - true_width) / 2;
+            width = c->width;
+        }
         const int true_height = c->height + bw * 2;
-        if (true_height < sh)
+        if (true_height < sh) {
             y = (sh - true_height) / 2;
-    } else
-        x = -bw, y = -bw, width = sw, height = sh;
+            height = c->height;
+        }
+    }
     XMoveResizeWindow(d, c->w, x, y, (unsigned int) width, (unsigned int) height);
 }
 
