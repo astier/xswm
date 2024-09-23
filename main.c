@@ -230,17 +230,15 @@ void property_notify(const XPropertyEvent *e) {
         XFree(p.value);
     } else if ((c = get_client(w))) {
         if (property == XA_WM_NORMAL_HINTS) {
-            const Bool fixed = is_fixed(w);
-            if (c->fixed == fixed)
+            if (c->fixed == is_fixed(w))
                 return;
-            c->fixed = fixed;
+            c->fixed = !c->fixed;
             if (!c->floating)
                 resize(c);
         } else if (property == net_atoms[WMWindowType]) {
-            const Bool floating = is_floating(w);
-            if (c->floating == floating)
+            if (c->floating == is_floating(w))
                 return;
-            c->floating = floating;
+            c->floating = !c->floating;
             if (!c->fixed)
                 resize(c);
         }
