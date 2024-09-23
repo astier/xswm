@@ -66,6 +66,7 @@ static void last(void);
 static void quit(void);
 
 // Window-Management
+static Bool is_floating(Window);
 static void delete(Window);
 static void focus(Window);
 static void pop(Window);
@@ -181,34 +182,7 @@ void focus_in(const XFocusInEvent *e) {
 void map_request(const Window w) {
     if (get_client(w))
         return;
-    // Check if window is floating based on window-type
-    Bool floating = False;
-    unsigned char *prop = NULL;
-    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
-            XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
-            &(unsigned long) {None}, &prop) == Success) {
-        Atom type;
-        if (prop)
-            type = *(Atom *) prop;
-        else {
-            if (XGetTransientForHint(d, w, &(Window) {None}))
-                type = net_atoms[WMWindowTypeDialog];
-            else
-                type = net_atoms[WMWindowTypeNormal];
-            XChangeProperty(d, w, net_atoms[WMWindowType], XA_ATOM, 32,
-                PropModeReplace, (unsigned char *) &type, 1);
-        }
-        floating = type != net_atoms[WMWindowTypeNormal];
-        if (prop)
-            XFree(prop);
-    }
-    // Check if window is floating based on size-hints
-    XSizeHints hints;
-    if (!floating && XGetWMNormalHints(d, w, &hints, &(long) {None})
-    && (hints.flags & PMinSize) && (hints.flags & PMaxSize)
-    && hints.min_width  == hints.max_width
-    && hints.min_height == hints.max_height)
-        floating = True;
+    Bool floating = is_floating(w);
     // Get geometry
     int x = -bw, y = -bw;
     unsigned int width = (unsigned int) sw, height = (unsigned int) sh;
@@ -226,7 +200,7 @@ void map_request(const Window w) {
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
         GrabModeSync, GrabModeSync, None, None);
-    XSelectInput(d, w, FocusChangeMask);
+    XSelectInput(d, w, FocusChangeMask | PropertyChangeMask);
     XSetWindowBorderWidth(d, w, (unsigned int) bw);
     set_frame_extents(w);
     resize(head);
@@ -237,16 +211,31 @@ void map_request(const Window w) {
 }
 
 void property_notify(const XPropertyEvent *e) {
-    if (e->window != r || e->atom != XA_WM_CMD)
-        return;
-    XTextProperty p;
-    XGetTextProperty(d, r, &p, XA_WM_CMD);
-    char cmd[16];
-    strcpy(cmd, (char *) p.value);
-    if      (!strcmp(cmd, "last"))  last();
-    else if (!strcmp(cmd, "close")) close();
-    else if (!strcmp(cmd, "quit"))  quit();
-    XFree(p.value);
+    Client *c;
+    const Window w = e->window;
+    const Atom property = e->atom;
+    if (w == r) {
+        // Remote-Control
+        if (property != XA_WM_CMD)
+            return;
+        XTextProperty p;
+        XGetTextProperty(d, r, &p, XA_WM_CMD);
+        char cmd[16];
+        strcpy(cmd, (char *) p.value);
+        if      (!strcmp(cmd, "last"))  last();
+        else if (!strcmp(cmd, "close")) close();
+        else if (!strcmp(cmd, "quit"))  quit();
+        XFree(p.value);
+    } else if ((c = get_client(w))) {
+        // Check if floating-status changed
+        if (property != XA_WM_NORMAL_HINTS && property != net_atoms[WMWindowType])
+            return;
+        Bool floating = is_floating(w);
+        if (c->floating == floating)
+            return;
+        c->floating = floating;
+        resize(c);
+    }
 }
 
 void unmap_notify(const XUnmapEvent *e) {
@@ -292,6 +281,38 @@ void close(void) { if (clients_n > 0) delete(head->w); }
 void last(void) { if (clients_n > 1) pop(head->next->w); }
 
 void quit(void) { running = False; }
+
+Bool is_floating(const Window w) {
+    // Check if window is floating based on window-type
+    Bool floating = False;
+    unsigned char *prop = NULL;
+    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
+            XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
+            &(unsigned long) {None}, &prop) == Success) {
+        Atom type;
+        if (prop)
+            type = *(Atom *) prop;
+        else {
+            if (XGetTransientForHint(d, w, &(Window) {None}))
+                type = net_atoms[WMWindowTypeDialog];
+            else
+                type = net_atoms[WMWindowTypeNormal];
+            XChangeProperty(d, w, net_atoms[WMWindowType], XA_ATOM, 32,
+                PropModeReplace, (unsigned char *) &type, 1);
+        }
+        floating = type != net_atoms[WMWindowTypeNormal];
+        if (prop)
+            XFree(prop);
+    }
+    // Check if window is floating based on size-hints
+    XSizeHints hints;
+    if (!floating && XGetWMNormalHints(d, w, &hints, &(long) {None})
+    && (hints.flags & PMinSize) && (hints.flags & PMaxSize)
+    && hints.min_width  == hints.max_width
+    && hints.min_height == hints.max_height)
+        floating = True;
+    return floating;
+}
 
 void delete(const Window w) {
     if (!send_protocol(w, wm_atoms[DeleteWindow]))
