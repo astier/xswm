@@ -42,7 +42,7 @@ enum {
 typedef struct Client {
     const Window w;
     Bool floating;
-    int x, y, width, height;
+    int x, y, width, height; // floating-geometry
     struct Client *next;
 } Client;
 
@@ -135,33 +135,36 @@ void configure_notify(const XConfigureEvent *e) {
 void configure_request(const XConfigureRequestEvent *e) {
     Client *c;
     const Window w = e->window;
+    const unsigned long value_mask = e->value_mask;
     if ((c = get_client(w))) {
-        if (c->floating) {
-            if (e->value_mask & CWX)
-                c->x = e->x;
-            if (e->value_mask & CWY)
-                c->y = e->y;
-            if (e->value_mask & CWWidth)
-                c->width = e->width;
-            if (e->value_mask & CWHeight)
-                c->height = e->height;
+        int x = e->x, y = e->y, width = e->width, height = e->height;
+        if (value_mask & CWX)
+            c->x = x;
+        if (value_mask & CWY)
+            c->y = y;
+        if (value_mask & CWWidth)
+            c->width = width;
+        if (value_mask & CWHeight)
+            c->height = height;
+        if (c->floating)
             resize(c);
-        }
-        XSendEvent(d, c->w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
+        else
+            x = -bw, y = -bw, width = sw, height = sh;
+        XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
             .type = ConfigureNotify,
             .display = d,
-            .event = c->w,
-            .window = c->w,
-            .x = c->x,
-            .y = c->y,
-            .width = c->width,
-            .height = c->height,
+            .event = w,
+            .window = w,
+            .x = x,
+            .y = y,
+            .width = width,
+            .height = height,
             .border_width = bw,
             .above = None,
             .override_redirect = False,
         });
     } else {
-        XConfigureWindow(d, w, (unsigned int) e->value_mask, &(XWindowChanges) {
+        XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
             .x = e->x,
             .y = e->y,
             .width = e->width,
@@ -182,15 +185,13 @@ void focus_in(const XFocusInEvent *e) {
 void map_request(const Window w) {
     if (get_client(w))
         return;
-    Bool floating = is_floating(w);
     // Get geometry
     int x = -bw, y = -bw;
     unsigned int width = (unsigned int) sw, height = (unsigned int) sh;
-    if (floating)
-        XGetGeometry(d, w, &(Window) {None}, &x, &y, &width,
-            &height, &(unsigned int) {None}, &(unsigned int) {None});
+    XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
+        &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w, floating,
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w, is_floating(w),
         x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
@@ -340,30 +341,18 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
+    int x = c->x, y = c->y, width = c->width, height = c->height;
     if (c->floating) {
         // Center if smaller than screen otherwise maximize
         const int true_width = c->width + bw * 2;
         if (true_width < sw)
-            c->x = (sw - true_width) / 2;
-        else {
-            c->x = -bw;
-            c->width = sw;
-        }
+            x = (sw - true_width) / 2;
         const int true_height = c->height + bw * 2;
         if (true_height < sh)
-            c->y = (sh - true_height) / 2;
-        else {
-            c->y = -bw;
-            c->height = sh;
-        }
-    } else {
-        c->x = -bw;
-        c->y = -bw;
-        c->width = sw;
-        c->height = sh;
-    }
-    XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
-        (unsigned int) c->height);
+            y = (sh - true_height) / 2;
+    } else
+        x = -bw, y = -bw, width = sw, height = sh;
+    XMoveResizeWindow(d, c->w, x, y, (unsigned int) width, (unsigned int) height);
 }
 
 Bool send_protocol(const Window w, const Atom protocol) {
