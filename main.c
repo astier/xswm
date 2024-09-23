@@ -233,15 +233,15 @@ void property_notify(const XPropertyEvent *e) {
             if (c->fixed == is_fixed(w))
                 return;
             c->fixed = !c->fixed;
-            if (!c->floating)
-                resize(c);
         } else if (property == net_atoms[WMWindowType]) {
             if (c->floating == is_floating(w))
                 return;
             c->floating = !c->floating;
-            if (!c->fixed)
-                resize(c);
         }
+        // Resize only if maximized windows
+        // Asssume floating clients send XConfigureRequestEvent
+        if (!c->fixed && !c->floating)
+            resize(c);
     }
 }
 
