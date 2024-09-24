@@ -136,37 +136,19 @@ void configure_notify(const XConfigureEvent *e) {
 
 void configure_request(const XConfigureRequestEvent *e) {
     Client *c;
-    const Window w = e->window;
     const unsigned long value_mask = e->value_mask;
-    if ((c = get_client(w))) {
-        int x = e->x, y = e->y, width = e->width, height = e->height;
+    if ((c = get_client(e->window))) {
         if (value_mask & CWX)
-            c->x = x;
+            c->x = e->x;
         if (value_mask & CWY)
-            c->y = y;
+            c->y = e->y;
         if (value_mask & CWWidth)
-            c->width = width;
+            c->width = e->width;
         if (value_mask & CWHeight)
-            c->height = height;
-        if (is_floating(c))
-            resize(c);
-        else
-            x = -bw, y = -bw, width = sw, height = sh;
-        XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
-            .type = ConfigureNotify,
-            .display = d,
-            .event = w,
-            .window = w,
-            .x = x,
-            .y = y,
-            .width = width,
-            .height = height,
-            .border_width = bw,
-            .above = None,
-            .override_redirect = False,
-        });
+            c->height = e->height;
+        resize(c);
     } else {
-        XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
+        XConfigureWindow(d, e->window, (unsigned int) value_mask, &(XWindowChanges) {
             .x = e->x,
             .y = e->y,
             .width = e->width,
@@ -357,7 +339,21 @@ void resize(Client *c) {
             height = c->height;
         }
     }
-    XMoveResizeWindow(d, c->w, x, y, (unsigned int) width, (unsigned int) height);
+    const Window w = c->w;
+    XMoveResizeWindow(d, w, x, y, (unsigned int) width, (unsigned int) height);
+    XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
+        .type = ConfigureNotify,
+        .display = d,
+        .event = w,
+        .window = w,
+        .x = x,
+        .y = y,
+        .width = width,
+        .height = height,
+        .border_width = bw,
+        .above = None,
+        .override_redirect = False,
+    });
 }
 
 Bool send_protocol(const Window w, const Atom protocol) {
