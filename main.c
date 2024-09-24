@@ -41,7 +41,7 @@ enum {
 
 typedef struct Client {
     const Window w;
-    Bool fixed, floating;
+    Bool fixed, normal;
     int x, y, width, height; // floating-geometry
     struct Client *next;
 } Client;
@@ -67,7 +67,8 @@ static void quit(void);
 
 // Window-Management
 static Bool is_fixed(Window);
-static Bool is_floating(Window);
+static Bool is_normal(Window);
+static Bool is_floating(const Client *c);
 static void delete(Window);
 static void focus(Window);
 static void pop(Window);
@@ -147,7 +148,7 @@ void configure_request(const XConfigureRequestEvent *e) {
             c->width = width;
         if (value_mask & CWHeight)
             c->height = height;
-        if (c->fixed || c->floating)
+        if (is_floating(c))
             resize(c);
         else
             x = -bw, y = -bw, width = sw, height = sh;
@@ -192,8 +193,9 @@ void map_request(const Window w) {
     XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
         &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w, is_fixed(w),
-        is_floating(w), x, y, (int) width, (int) height, head}, sizeof(Client));
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w,
+        is_fixed(w), is_normal(w), x, y,
+        (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
     update_client_list_stacking();
@@ -234,13 +236,13 @@ void property_notify(const XPropertyEvent *e) {
                 return;
             c->fixed = !c->fixed;
         } else if (property == net_atoms[WMWindowType]) {
-            if (c->floating == is_floating(w))
+            if (c->normal == is_normal(w))
                 return;
-            c->floating = !c->floating;
+            c->normal = !c->normal;
         }
-        // Resize only if maximized windows
+        // Resize only if window is maximized
         // Asssume floating clients send XConfigureRequestEvent
-        if (!c->fixed && !c->floating)
+        if (!is_floating(c))
             resize(c);
     }
 }
@@ -299,20 +301,22 @@ Bool is_fixed(const Window w) {
     return False;
 }
 
-Bool is_floating(const Window w) {
+Bool is_normal(const Window w) {
     unsigned char *prop = NULL;
     if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
     XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
     &(unsigned long) {None}, &prop) != Success)
-        return False;
-    Bool floating = False;
+        return True;
+    Bool floating = True;
     if (prop) {
-        floating = *(Atom *) prop == net_atoms[WMWindowTypeNormal] ? False : True;
+        floating = *(Atom *) prop == net_atoms[WMWindowTypeNormal] ? True : False;
         XFree(prop);
     } else if (XGetTransientForHint(d, w, &(Window) {None}))
-        floating = True;
+        floating = False;
     return floating;
 }
+
+Bool is_floating(const Client *c) { return c->fixed || !c->normal; }
 
 void delete(const Window w) {
     if (!send_protocol(w, wm_atoms[DeleteWindow]))
@@ -341,7 +345,7 @@ void pop(const Window w) {
 
 void resize(Client *c) {
     int x = -bw, y = -bw, width = sw, height = sh;
-    if (c->fixed || c->floating) {
+    if (is_floating(c)) {
         // Center if smaller than screen otherwise maximize
         const int true_width = c->width + bw * 2;
         if (true_width < sw) {
