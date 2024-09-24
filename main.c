@@ -138,6 +138,8 @@ void configure_request(const XConfigureRequestEvent *e) {
     Client *c;
     const unsigned long value_mask = e->value_mask;
     if ((c = get_client(e->window))) {
+        if (!(value_mask & (CWX | CWY | CWWidth | CWHeight)))
+            return;
         if (value_mask & CWX) c->x = e->x;
         if (value_mask & CWY) c->y = e->y;
         if (value_mask & CWWidth) c->width = e->width;
