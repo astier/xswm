@@ -240,7 +240,6 @@ void property_notify(const XPropertyEvent *e) {
                 return;
             c->normal = !c->normal;
         }
-        // Resize only if window is maximized
         // Asssume floating clients send XConfigureRequestEvent
         if (!is_floating(c))
             resize(c);
