@@ -42,7 +42,7 @@ enum {
 typedef struct Client {
     const Window w;
     Bool fixed, normal;
-    int x, y, width, height; // floating-geometry
+    int x, y, width, height; // client-requested geometry
     struct Client *next;
 } Client;
 
