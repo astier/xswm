@@ -59,6 +59,7 @@ static void unmap_notify(const XUnmapEvent *);
 // List-Functions
 static Client * get_client(Window);
 static Client * get_parent(const Client *);
+static void pop(Window);
 
 // Remote-Commands
 static void close(void);
@@ -69,18 +70,17 @@ static void quit(void);
 static Bool is_fixed(Window);
 static Bool is_normal(Window);
 static Bool is_floating(const Client *c);
+static Bool send_protocol(Window, Atom);
 static void delete(Window);
 static void focus(Window);
-static void pop(Window);
 static void resize(Client *);
+static int  get_state(Window);
+static void set_state(Window, long);
+static void set_frame_extents(Window);
 
-// X-Utilities
-static Bool send_protocol(Window, Atom);
-static int get_state(Window);
+// X-Management
 static int xerror(Display *, XErrorEvent *);
 static void set_desktop_geometry(void);
-static void set_frame_extents(Window);
-static void set_state(Window, long);
 static void set_workarea(void);
 static void update_client_list(Window, Bool);
 static void update_client_list_stacking(void);
@@ -266,6 +266,19 @@ Client * get_parent(const Client *c) {
     return p;
 }
 
+void pop(const Window w) {
+    Client *c = get_client(w);
+    if (!c || head == c)
+        return;
+    focus(w);
+    XRaiseWindow(d, w);
+    // Update list
+    get_parent(c)->next = c->next;
+    c->next = head;
+    head = c;
+    update_client_list_stacking();
+}
+
 void close(void) { if (clients_n > 0) delete(head->w); }
 
 void last(void) { if (clients_n > 1) pop(head->next->w); }
@@ -299,6 +312,27 @@ Bool is_normal(const Window w) {
 
 Bool is_floating(const Client *c) { return c->fixed || !c->normal; }
 
+Bool send_protocol(const Window w, const Atom protocol) {
+    Atom *protocols;
+    int count;
+    if (!XGetWMProtocols(d, w, &protocols, &count))
+        return False;
+    Bool protocol_exists = False;
+    while (!protocol_exists && count--)
+        protocol_exists = protocols[count] == protocol;
+    XFree(protocols);
+    if (!protocol_exists)
+        return False;
+    return XSendEvent(d, w, False, NoEventMask, (XEvent *) &(XClientMessageEvent) {
+        .type = ClientMessage,
+        .window = w,
+        .message_type = wm_atoms[Protocols],
+        .format = 32,
+        .data.l[0] = (long) protocol,
+        .data.l[1] = CurrentTime,
+    });
+}
+
 void delete(const Window w) {
     if (!send_protocol(w, wm_atoms[DeleteWindow]))
         XKillClient(d, w);
@@ -309,19 +343,6 @@ void focus(const Window w) {
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
     send_protocol(w, wm_atoms[TakeFocus]);
-}
-
-void pop(const Window w) {
-    Client *c = get_client(w);
-    if (!c || head == c)
-        return;
-    focus(w);
-    XRaiseWindow(d, w);
-    // Update list
-    get_parent(c)->next = c->next;
-    c->next = head;
-    head = c;
-    update_client_list_stacking();
 }
 
 void resize(Client *c) {
@@ -356,27 +377,6 @@ void resize(Client *c) {
     });
 }
 
-Bool send_protocol(const Window w, const Atom protocol) {
-    Atom *protocols;
-    int count;
-    if (!XGetWMProtocols(d, w, &protocols, &count))
-        return False;
-    Bool protocol_exists = False;
-    while (!protocol_exists && count--)
-        protocol_exists = protocols[count] == protocol;
-    XFree(protocols);
-    if (!protocol_exists)
-        return False;
-    return XSendEvent(d, w, False, NoEventMask, (XEvent *) &(XClientMessageEvent) {
-        .type = ClientMessage,
-        .window = w,
-        .message_type = wm_atoms[Protocols],
-        .format = 32,
-        .data.l[0] = (long) protocol,
-        .data.l[1] = CurrentTime,
-    });
-}
-
 int get_state(const Window w) {
     int state = -1;
     unsigned char *prop;
@@ -391,11 +391,9 @@ int get_state(const Window w) {
     return state;
 }
 
-int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
-
-void set_desktop_geometry(void) {
-    XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
+void set_state(const Window w, const long state) {
+    XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
+        PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
 }
 
 void set_frame_extents(const Window w) {
@@ -403,9 +401,11 @@ void set_frame_extents(const Window w) {
         PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
 }
 
-void set_state(const Window w, const long state) {
-    XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
-        PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
+int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
+
+void set_desktop_geometry(void) {
+    XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
 }
 
 void set_workarea(void) {
