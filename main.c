@@ -138,14 +138,10 @@ void configure_request(const XConfigureRequestEvent *e) {
     Client *c;
     const unsigned long value_mask = e->value_mask;
     if ((c = get_client(e->window))) {
-        if (value_mask & CWX)
-            c->x = e->x;
-        if (value_mask & CWY)
-            c->y = e->y;
-        if (value_mask & CWWidth)
-            c->width = e->width;
-        if (value_mask & CWHeight)
-            c->height = e->height;
+        if (value_mask & CWX) c->x = e->x;
+        if (value_mask & CWY) c->y = e->y;
+        if (value_mask & CWWidth) c->width = e->width;
+        if (value_mask & CWHeight) c->height = e->height;
         resize(c);
     } else {
         XConfigureWindow(d, e->window, (unsigned int) value_mask, &(XWindowChanges) {
