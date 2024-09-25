@@ -519,6 +519,8 @@ int main(const int argc, const char *argv[]) {
         PropModeReplace, (unsigned char *) &wm_check, 1);
     XChangeProperty(d, wm_check, net_atoms[WMName], utf8string, 8,
         PropModeReplace, (unsigned char *) &wm_name, wm_name_len);
+    XChangeProperty(d, r, net_atoms[Supported], XA_ATOM, 32,
+        PropModeReplace, (unsigned char *) &net_atoms, Net_N);
     // EWMH-Configuration
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW, 32,
         PropModeReplace, None, 0);
@@ -534,8 +536,6 @@ int main(const int argc, const char *argv[]) {
         PropModeReplace, (unsigned char *) (long []) {0, 0}, 2);
     XChangeProperty(d, r, net_atoms[NumberOfDesktops], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {1}, 1);
-    XChangeProperty(d, r, net_atoms[Supported], XA_ATOM, 32,
-        PropModeReplace, (unsigned char *) &net_atoms, Net_N);
     XChangeProperty(d, r, net_atoms[WMName], utf8string, 8,
         PropModeReplace, (unsigned char *) &wm_name, wm_name_len);
     set_desktop_geometry();
