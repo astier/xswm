@@ -20,6 +20,8 @@ enum {
     RequestFrameExtents,
     Supported,
     SupportingWMCheck,
+    WMActionClose,
+    WMAllowedActions,
     WMDesktop,
     WMFullPlacement,
     WMName,
@@ -182,6 +184,8 @@ void map_request(const Window w) {
     update_client_list(w, True);
     update_client_list_stacking();
     // Configure
+    XChangeProperty(d, w, net_atoms[WMAllowedActions], XA_ATOM, 32,
+        PropModeReplace, (unsigned char *) (Atom []) {net_atoms[WMActionClose]}, 1);
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
@@ -499,6 +503,8 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[RequestFrameExtents] = "_NET_REQUEST_FRAME_EXTENTS";
     net_atom_names[Supported] = "_NET_SUPPORTED";
     net_atom_names[SupportingWMCheck] = "_NET_SUPPORTING_WM_CHECK";
+    net_atom_names[WMActionClose] = "_NET_WM_ACTION_CLOSE";
+    net_atom_names[WMAllowedActions] = "_NET_WM_ALLOWED_ACTIONS";
     net_atom_names[WMDesktop] = "_NET_WM_DESKTOP";
     net_atom_names[WMFullPlacement] = "_NET_WM_FULL_PLACEMENT";
     net_atom_names[WMName] = "_NET_WM_NAME";
