@@ -78,6 +78,7 @@ static void resize(Client *);
 static int  get_state(Window);
 static void set_state(Window, long);
 static void set_frame_extents(Window);
+static void send_configure_event(const Client *c);
 
 // X-Management
 static int xerror(Display *, XErrorEvent *);
@@ -146,19 +147,7 @@ void configure_request(const XConfigureRequestEvent *e) {
         if (value_mask & CWHeight) c->height_request = e->height;
         if (value_mask & (CWX | CWY | CWWidth | CWHeight) && is_floating(c))
             resize(c);
-        XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
-            .type = ConfigureNotify,
-            .display = d,
-            .event = w,
-            .window = w,
-            .x = c->x,
-            .y = c->y,
-            .width = c->width,
-            .height = c->height,
-            .border_width = bw,
-            .above = None,
-            .override_redirect = False,
-        });
+        send_configure_event(c);
     } else {
         XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
             .x = e->x,
@@ -202,6 +191,7 @@ void map_request(const Window w) {
     XSetWindowBorderWidth(d, w, (unsigned int) bw);
     set_frame_extents(w);
     resize(head);
+    send_configure_event(head);
     // Map and focus
     set_state(w, NormalState);
     XMapWindow(d, w);
@@ -400,6 +390,23 @@ void set_state(const Window w, const long state) {
 void set_frame_extents(const Window w) {
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
+}
+
+void send_configure_event(const Client *c) {
+    const Window w = c->w;
+    XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
+        .type = ConfigureNotify,
+        .display = d,
+        .event = w,
+        .window = w,
+        .x = c->x,
+        .y = c->y,
+        .width = c->width,
+        .height = c->height,
+        .border_width = bw,
+        .above = None,
+        .override_redirect = False,
+    });
 }
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
