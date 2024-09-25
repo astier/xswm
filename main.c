@@ -25,6 +25,8 @@ enum {
     WMDesktop,
     WMFullPlacement,
     WMName,
+    WMState,
+    WMStateFocused,
     WMWindowType,
     WMWindowTypeDialog,
     WMWindowTypeNormal,
@@ -275,12 +277,11 @@ void pop(const Window w) {
     Client *c = get_client(w);
     if (!c || head == c)
         return;
-    focus(w);
-    XRaiseWindow(d, w);
-    // Update list
     get_parent(c)->next = c->next;
     c->next = head;
     head = c;
+    focus(w);
+    XRaiseWindow(d, w);
     update_client_list_stacking();
 }
 
@@ -348,6 +349,12 @@ void focus(const Window w) {
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
     send_protocol(w, wm_atoms[TakeFocus]);
+    // Set _NET_WM_STATE_FOCUSED
+    XChangeProperty(d, w, net_atoms[WMState], XA_ATOM, 32, PropModeReplace,
+        (unsigned char *) (Atom []) {net_atoms[WMStateFocused]}, 1);
+    if (head->next)
+        XChangeProperty(d, head->next->w, net_atoms[WMState], XA_ATOM, 32,
+            PropModeReplace, (unsigned char *) (Atom []) {None}, 0);
 }
 
 void resize(Client *c) {
@@ -511,6 +518,9 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[DesktopViewport] = "_NET_DESKTOP_VIEWPORT";
     net_atom_names[NumberOfDesktops] = "_NET_NUMBER_OF_DESKTOPS";
     net_atom_names[WMDesktop] = "_NET_WM_DESKTOP";
+    // States
+    net_atom_names[WMState] = "_NET_WM_STATE";
+    net_atom_names[WMStateFocused] = "_NET_WM_STATE_FOCUSED";
     // Window-Types
     net_atom_names[WMWindowType] = "_NET_WM_WINDOW_TYPE";
     net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
