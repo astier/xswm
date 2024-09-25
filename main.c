@@ -149,17 +149,15 @@ void configure_request(const XConfigureRequestEvent *e) {
         if (value_mask & (CWX | CWY | CWWidth | CWHeight) && is_floating(c))
             resize(c);
         send_configure_event(c);
-    } else {
-        XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
-            .x = e->x,
-            .y = e->y,
-            .width = e->width,
-            .height = e->height,
-            .border_width = e->border_width,
-            .sibling = e->above,
-            .stack_mode = e->detail,
-        });
-    }
+    } else XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
+        .x = e->x,
+        .y = e->y,
+        .width = e->width,
+        .height = e->height,
+        .border_width = e->border_width,
+        .sibling = e->above,
+        .stack_mode = e->detail,
+    });
 }
 
 // Prevent bad clients from stealing focus
