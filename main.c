@@ -42,7 +42,8 @@ enum {
 typedef struct Client {
     const Window w;
     Bool fixed, normal;
-    int x, y, width, height; // client-requested geometry
+    int x_request, y_request, width_request, height_request;
+    int x, y, width, height;
     struct Client *next;
 } Client;
 
@@ -136,17 +137,30 @@ void configure_notify(const XConfigureEvent *e) {
 
 void configure_request(const XConfigureRequestEvent *e) {
     Client *c;
+    const Window w = e->window;
     const unsigned long value_mask = e->value_mask;
-    if ((c = get_client(e->window))) {
-        if (!(value_mask & (CWX | CWY | CWWidth | CWHeight)))
-            return;
-        if (value_mask & CWX) c->x = e->x;
-        if (value_mask & CWY) c->y = e->y;
-        if (value_mask & CWWidth) c->width = e->width;
-        if (value_mask & CWHeight) c->height = e->height;
-        resize(c);
+    if ((c = get_client(w))) {
+        if (value_mask & CWX) c->x_request = e->x;
+        if (value_mask & CWY) c->y_request = e->y;
+        if (value_mask & CWWidth) c->width_request = e->width;
+        if (value_mask & CWHeight) c->height_request = e->height;
+        if (value_mask & (CWX | CWY | CWWidth | CWHeight) && is_floating(c))
+            resize(c);
+        XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
+            .type = ConfigureNotify,
+            .display = d,
+            .event = w,
+            .window = w,
+            .x = c->x,
+            .y = c->y,
+            .width = c->width,
+            .height = c->height,
+            .border_width = bw,
+            .above = None,
+            .override_redirect = False,
+        });
     } else {
-        XConfigureWindow(d, e->window, (unsigned int) value_mask, &(XWindowChanges) {
+        XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
             .x = e->x,
             .y = e->y,
             .width = e->width,
@@ -174,8 +188,8 @@ void map_request(const Window w) {
         &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
     memcpy(head = malloc(sizeof(Client)), &(Client) {w,
-        is_fixed(w), is_normal(w), x, y,
-        (int) width, (int) height, head}, sizeof(Client));
+        is_fixed(w), is_normal(w), x, y, (int) width, (int) height,
+        x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
     update_client_list_stacking();
@@ -346,33 +360,22 @@ void focus(const Window w) {
 void resize(Client *c) {
     int x = -bw, y = -bw, width = sw, height = sh;
     if (is_floating(c)) {
-        // Center if smaller than screen otherwise maximize
-        const int true_width = c->width + bw * 2;
+        // Center if smaller than screen
+        const int true_width = c->width_request + bw * 2;
         if (true_width < sw) {
             x = (sw - true_width) / 2;
-            width = c->width;
+            width = c->width_request;
         }
-        const int true_height = c->height + bw * 2;
+        const int true_height = c->height_request + bw * 2;
         if (true_height < sh) {
             y = (sh - true_height) / 2;
-            height = c->height;
+            height = c->height_request;
         }
     }
-    const Window w = c->w;
-    XMoveResizeWindow(d, w, x, y, (unsigned int) width, (unsigned int) height);
-    XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
-        .type = ConfigureNotify,
-        .display = d,
-        .event = w,
-        .window = w,
-        .x = x,
-        .y = y,
-        .width = width,
-        .height = height,
-        .border_width = bw,
-        .above = None,
-        .override_redirect = False,
-    });
+    if (x == c->x && y == c->y && width == c->width && height == c->height)
+        return;
+    c->x = x, c->y = y, c->width = width, c->height = height;
+    XMoveResizeWindow(d, c->w, x, y, (unsigned int) width, (unsigned int) height);
 }
 
 int get_state(const Window w) {
