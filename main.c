@@ -546,28 +546,17 @@ int main(const int argc, const char *argv[]) {
     XDefineCursor(d, r, XCreateFontCursor(d, 68));
     system("\"$XDG_CONFIG_HOME\"/xswm/autostart.sh &");
     // Scan for windows which started before xswm
-    Window root, *children = NULL;
-    unsigned int nchildren;
-    if (XQueryTree(d, r, &root, &(Window) {None}, &children, &nchildren)) {
-        XWindowAttributes wa;
-        // Non-transient windows
-        for (unsigned int i = 0; i < nchildren; i++) {
-            Window w = children[i];
-            if (XGetWindowAttributes(d, w, &wa)
-            && !wa.override_redirect
-            && !XGetTransientForHint(d, w, &root)
+    Window *windows = NULL;
+    unsigned int windows_n;
+    if (XQueryTree(d, r, &(Window) {None}, &(Window) {None}, &windows, &windows_n)) {
+        for (unsigned int i = 0; i < windows_n; i++) {
+            XWindowAttributes wa;
+            const Window w = windows[i];
+            if (XGetWindowAttributes(d, w, &wa) && !wa.override_redirect
             && (wa.map_state == IsViewable || get_state(w) == IconicState))
                 map_request(w);
         }
-        // Transient windows
-        for (unsigned int i = 0; i < nchildren; i++) {
-            Window w = children[i];
-            if (XGetWindowAttributes(d, w, &wa)
-            && XGetTransientForHint(d, w, &root)
-            && (wa.map_state == IsViewable || get_state(w) == IconicState))
-                map_request(w);
-        }
-        XFree(children);
+        XFree(windows);
     }
     // Main-Loop
     XEvent e;
