@@ -13,6 +13,7 @@ enum {
     CloseWindow,
     CurrentDesktop,
     DesktopGeometry,
+    DesktopNames,
     DesktopViewport,
     FrameExtents,
     NumberOfDesktops,
@@ -493,6 +494,7 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[CloseWindow] = "_NET_CLOSE_WINDOW";
     net_atom_names[CurrentDesktop] = "_NET_CURRENT_DESKTOP";
     net_atom_names[DesktopGeometry] = "_NET_DESKTOP_GEOMETRY";
+    net_atom_names[DesktopNames] = "_NET_DESKTOP_NAMES";
     net_atom_names[DesktopViewport] = "_NET_DESKTOP_VIEWPORT";
     net_atom_names[FrameExtents] = "_NET_FRAME_EXTENTS";
     net_atom_names[NumberOfDesktops] = "_NET_NUMBER_OF_DESKTOPS";
@@ -528,6 +530,8 @@ int main(const int argc, const char *argv[]) {
         PropModeReplace, None, 0);
     XChangeProperty(d, r, net_atoms[CurrentDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {0}, 1);
+    XChangeProperty(d, r, net_atoms[DesktopNames], utf8string, 8,
+        PropModeReplace, (unsigned char *) "", 1);
     XChangeProperty(d, r, net_atoms[DesktopViewport], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {0, 0}, 2);
     XChangeProperty(d, r, net_atoms[NumberOfDesktops], XA_CARDINAL, 32,
