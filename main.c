@@ -27,6 +27,8 @@ enum {
     WMName,
     WMState,
     WMStateFocused,
+    WMStateMaximizedHorz,
+    WMStateMaximizedVert,
     WMWindowType,
     WMWindowTypeDialog,
     WMWindowTypeNormal,
@@ -83,6 +85,7 @@ static void resize(Client *);
 static int  get_state(Window);
 static void set_state(Window, long);
 static void set_frame_extents(Window);
+static void set_wm_state(const Client *);
 static void send_configure_event(const Client *c);
 
 // X-Management
@@ -220,18 +223,15 @@ void property_notify(const XPropertyEvent *e) {
         else if (!strcmp(cmd, "quit"))  quit();
         XFree(p.value);
     } else if ((c = get_client(w))) {
-        if (property == XA_WM_NORMAL_HINTS) {
-            if (c->fixed == is_fixed(w))
-                return;
-            c->fixed = !c->fixed;
-        } else if (property == net_atoms[WMWindowType]) {
-            if (c->normal == is_normal(w))
-                return;
-            c->normal = !c->normal;
-        }
-        // Asssume floating clients send XConfigureRequestEvent
-        if (!is_floating(c))
+        Bool floating_old = is_floating(c);
+        if (property == XA_WM_NORMAL_HINTS)
+            c->fixed = is_fixed(w);
+        else if (property == net_atoms[WMWindowType])
+            c->normal = is_normal(w);
+        if (floating_old != is_floating(c)) {
+            set_wm_state(c);
             resize(c);
+        }
     }
 }
 
@@ -349,12 +349,9 @@ void focus(const Window w) {
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
     send_protocol(w, wm_atoms[TakeFocus]);
-    // Set _NET_WM_STATE_FOCUSED
-    XChangeProperty(d, w, net_atoms[WMState], XA_ATOM, 32, PropModeReplace,
-        (unsigned char *) (Atom []) {net_atoms[WMStateFocused]}, 1);
+    set_wm_state(head);
     if (head->next)
-        XChangeProperty(d, head->next->w, net_atoms[WMState], XA_ATOM, 32,
-            PropModeReplace, (unsigned char *) (Atom []) {None}, 0);
+        set_wm_state(head->next);
 }
 
 void resize(Client *c) {
@@ -400,6 +397,19 @@ void set_state(const Window w, const long state) {
 void set_frame_extents(const Window w) {
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
+}
+
+void set_wm_state(const Client *c) {
+    int i = 0;
+    Atom states[4];
+    if (!is_floating(c)) {
+        states[i++] = net_atoms[WMStateMaximizedHorz];
+        states[i++] = net_atoms[WMStateMaximizedVert];
+    }
+    if (head->w == c->w)
+        states[i++] = net_atoms[WMStateFocused];
+    XChangeProperty(d, c->w, net_atoms[WMState], XA_ATOM, 32,
+        PropModeReplace, (unsigned char *) &states, i);
 }
 
 void send_configure_event(const Client *c) {
@@ -521,6 +531,8 @@ int main(const int argc, const char *argv[]) {
     // States
     net_atom_names[WMState] = "_NET_WM_STATE";
     net_atom_names[WMStateFocused] = "_NET_WM_STATE_FOCUSED";
+    net_atom_names[WMStateMaximizedHorz] = "_NET_WM_STATE_MAXIMIZED_HORZ";
+    net_atom_names[WMStateMaximizedVert] = "_NET_WM_STATE_MAXIMIZED_VERT";
     // Window-Types
     net_atom_names[WMWindowType] = "_NET_WM_WINDOW_TYPE";
     net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
