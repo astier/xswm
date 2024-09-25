@@ -481,38 +481,41 @@ int main(const int argc, const char *argv[]) {
     const int s = XDefaultScreen(d);
     sh = XDisplayHeight(d, s);
     sw = XDisplayWidth(d, s);
-    // ICCCM atoms
+    // ICCCM-Atoms
     char *wm_atom_names[WM_N];
-    wm_atom_names[DeleteWindow] = "WM_DELETE_WINDOW";
     wm_atom_names[Protocols] = "WM_PROTOCOLS";
-    wm_atom_names[State] = "WM_STATE";
     wm_atom_names[TakeFocus] = "WM_TAKE_FOCUS";
+    wm_atom_names[DeleteWindow] = "WM_DELETE_WINDOW";
+    wm_atom_names[State] = "WM_STATE";
     XInternAtoms(d, wm_atom_names, WM_N, False, wm_atoms);
-    // EWMH atoms
+    // EWMH-Atoms
     char *net_atom_names[Net_N];
     net_atom_names[ActiveWindow] = "_NET_ACTIVE_WINDOW";
     net_atom_names[ClientList] = "_NET_CLIENT_LIST";
     net_atom_names[ClientListStacking] = "_NET_CLIENT_LIST_STACKING";
+    net_atom_names[FrameExtents] = "_NET_FRAME_EXTENTS";
+    net_atom_names[RequestFrameExtents] = "_NET_REQUEST_FRAME_EXTENTS";
+    net_atom_names[Supported] = "_NET_SUPPORTED";
+    net_atom_names[SupportingWMCheck] = "_NET_SUPPORTING_WM_CHECK";
+    net_atom_names[WMFullPlacement] = "_NET_WM_FULL_PLACEMENT";
+    net_atom_names[WMName] = "_NET_WM_NAME";
+    net_atom_names[Workarea] = "_NET_WORKAREA";
+    // Actions
     net_atom_names[CloseWindow] = "_NET_CLOSE_WINDOW";
+    net_atom_names[WMActionClose] = "_NET_WM_ACTION_CLOSE";
+    net_atom_names[WMAllowedActions] = "_NET_WM_ALLOWED_ACTIONS";
+    // Desktops
     net_atom_names[CurrentDesktop] = "_NET_CURRENT_DESKTOP";
     net_atom_names[DesktopGeometry] = "_NET_DESKTOP_GEOMETRY";
     net_atom_names[DesktopNames] = "_NET_DESKTOP_NAMES";
     net_atom_names[DesktopViewport] = "_NET_DESKTOP_VIEWPORT";
-    net_atom_names[FrameExtents] = "_NET_FRAME_EXTENTS";
     net_atom_names[NumberOfDesktops] = "_NET_NUMBER_OF_DESKTOPS";
-    net_atom_names[RequestFrameExtents] = "_NET_REQUEST_FRAME_EXTENTS";
-    net_atom_names[Supported] = "_NET_SUPPORTED";
-    net_atom_names[SupportingWMCheck] = "_NET_SUPPORTING_WM_CHECK";
-    net_atom_names[WMActionClose] = "_NET_WM_ACTION_CLOSE";
-    net_atom_names[WMAllowedActions] = "_NET_WM_ALLOWED_ACTIONS";
     net_atom_names[WMDesktop] = "_NET_WM_DESKTOP";
-    net_atom_names[WMFullPlacement] = "_NET_WM_FULL_PLACEMENT";
-    net_atom_names[WMName] = "_NET_WM_NAME";
+    // Window-Types
     net_atom_names[WMWindowType] = "_NET_WM_WINDOW_TYPE";
     net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
     net_atom_names[WMWindowTypeNormal] = "_NET_WM_WINDOW_TYPE_NORMAL";
     net_atom_names[WMWindowTypeSplash] = "_NET_WM_WINDOW_TYPE_SPLASH";
-    net_atom_names[Workarea] = "_NET_WORKAREA";
     XInternAtoms(d, net_atom_names, Net_N, False, net_atoms);
     // Indicate EWMH-Compliance
     const char wm_name[] = "xswm";
