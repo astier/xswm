@@ -307,13 +307,13 @@ Bool is_normal(const Window w) {
     XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
     &(unsigned long) {None}, &prop) != Success)
         return True;
-    Bool floating = True;
+    Bool normal = True;
     if (prop) {
-        floating = *(Atom *) prop == net_atoms[WMWindowTypeNormal] ? True : False;
+        normal = *(Atom *) prop == net_atoms[WMWindowTypeNormal] ? True : False;
         XFree(prop);
     } else if (XGetTransientForHint(d, w, &(Window) {None}))
-        floating = False;
-    return floating;
+        normal = False;
+    return normal;
 }
 
 Bool is_floating(const Client *c) { return c->fixed || !c->normal; }
