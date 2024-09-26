@@ -25,11 +25,6 @@ enum {
     WMDesktop,
     WMFullPlacement,
     WMName,
-    WMState,
-    WMStateFocused,
-    WMStateFullscreen,
-    WMStateMaximizedHorz,
-    WMStateMaximizedVert,
     WMWindowType,
     WMWindowTypeDialog,
     WMWindowTypeNormal,
@@ -50,7 +45,7 @@ enum {
 
 typedef struct Client {
     const Window w;
-    Bool fixed, fullscreen, normal;
+    Bool fixed, normal;
     int x_request, y_request, width_request, height_request;
     int x, y, width, height;
     struct Client *next;
@@ -79,7 +74,6 @@ static void quit(void);
 // Window-Management
 static Bool is_fixed(Window);
 static Bool is_normal(Window);
-static Bool is_fullscreen(Window);
 static Bool is_floating(const Client *);
 static Bool send_protocol(Window, Atom);
 static void delete(Window);
@@ -88,7 +82,6 @@ static void resize(Client *);
 static int  get_state(Window);
 static void set_state(Window, long);
 static void set_frame_extents(Window);
-static void set_wm_state(const Client *);
 static void send_configure_event(const Client *);
 
 // X-Management
@@ -123,8 +116,7 @@ void button_press(const XButtonPressedEvent *e) {
 
 void client_message(const XClientMessageEvent *e) {
     const Window w = e->window;
-    Client *c = get_client(w);
-    if (!c)
+    if (!get_client(w))
         return;
     const Atom msg = e->message_type;
     if (msg == net_atoms[ActiveWindow])
@@ -133,22 +125,6 @@ void client_message(const XClientMessageEvent *e) {
         delete(w);
     else if (msg == net_atoms[RequestFrameExtents])
         set_frame_extents(w);
-    else if (msg == net_atoms[WMState]) {
-        const Atom *data = (Atom *) e->data.l;
-        if ((data[1] != net_atoms[WMStateFullscreen]
-        &&   data[2] != net_atoms[WMStateFullscreen]))
-            return;
-        const Bool floating_old = is_floating(c);
-        if (data[0] == 0)
-            c->fullscreen = False;
-        else if (data[0] == 1)
-            c->fullscreen = True;
-        else if (data[0] == 2)
-            c->fullscreen = !c->fullscreen;
-        if (floating_old != is_floating(c))
-            resize(c);
-        set_wm_state(c);
-    }
 }
 
 void configure_notify(const XConfigureEvent *e) {
@@ -202,8 +178,8 @@ void map_request(const Window w) {
     XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
         &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w, is_fixed(w),
-        is_fullscreen(w), is_normal(w), x, y, (int) width, (int) height,
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w,
+        is_fixed(w), is_normal(w), x, y, (int) width, (int) height,
         x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
@@ -249,10 +225,8 @@ void property_notify(const XPropertyEvent *e) {
             c->fixed = is_fixed(w);
         else if (property == net_atoms[WMWindowType])
             c->normal = is_normal(w);
-        if (floating_old != is_floating(c)) {
-            set_wm_state(c);
+        if (floating_old != is_floating(c))
             resize(c);
-        }
     }
 }
 
@@ -337,21 +311,7 @@ Bool is_normal(const Window w) {
     return normal;
 }
 
-Bool is_fullscreen(const Window w) {
-    unsigned long nitems;
-    unsigned char *prop = NULL;
-    if (XGetWindowProperty(d, w, net_atoms[WMState], 0, ~0, False, XA_ATOM,
-    &(Atom) {None}, &(int) {None}, &nitems, &(unsigned long) {None}, &prop)
-    != Success || !prop || !nitems)
-        return False;
-    Atom *states = (Atom *) prop;
-    unsigned long i;
-    for (i = 0; i < nitems && states[i] != net_atoms[WMStateFullscreen]; i++);
-    XFree(prop);
-    return i < nitems;
-}
-
-Bool is_floating(const Client *c) { return !c->fullscreen && (c->fixed || !c->normal); }
+Bool is_floating(const Client *c) { return c->fixed || !c->normal; }
 
 Bool send_protocol(const Window w, const Atom protocol) {
     Atom *protocols;
@@ -384,9 +344,6 @@ void focus(const Window w) {
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
     send_protocol(w, wm_atoms[TakeFocus]);
-    set_wm_state(head);
-    if (head->next)
-        set_wm_state(head->next);
 }
 
 void resize(Client *c) {
@@ -431,21 +388,6 @@ void set_state(const Window w, const long state) {
 void set_frame_extents(const Window w) {
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
-}
-
-void set_wm_state(const Client *c) {
-    int i = 0;
-    Atom states[4];
-    if (!is_floating(c)) {
-        states[i++] = net_atoms[WMStateMaximizedHorz];
-        states[i++] = net_atoms[WMStateMaximizedVert];
-    }
-    if (c->fullscreen)
-        states[i++] = net_atoms[WMStateFullscreen];
-    if (head->w == c->w)
-        states[i++] = net_atoms[WMStateFocused];
-    XChangeProperty(d, c->w, net_atoms[WMState], XA_ATOM, 32,
-        PropModeReplace, (unsigned char *) &states, i);
 }
 
 void send_configure_event(const Client *c) {
@@ -564,12 +506,6 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[DesktopViewport] = "_NET_DESKTOP_VIEWPORT";
     net_atom_names[NumberOfDesktops] = "_NET_NUMBER_OF_DESKTOPS";
     net_atom_names[WMDesktop] = "_NET_WM_DESKTOP";
-    // States
-    net_atom_names[WMState] = "_NET_WM_STATE";
-    net_atom_names[WMStateFocused] = "_NET_WM_STATE_FOCUSED";
-    net_atom_names[WMStateFullscreen] = "_NET_WM_STATE_FULLSCREEN";
-    net_atom_names[WMStateMaximizedHorz] = "_NET_WM_STATE_MAXIMIZED_HORZ";
-    net_atom_names[WMStateMaximizedVert] = "_NET_WM_STATE_MAXIMIZED_VERT";
     // Window-Types
     net_atom_names[WMWindowType] = "_NET_WM_WINDOW_TYPE";
     net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
