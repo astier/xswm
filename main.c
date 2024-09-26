@@ -303,7 +303,7 @@ Bool is_fixed(const Window w) {
 
 Bool is_normal(const Window w) {
     unsigned char *prop = NULL;
-    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0L, 1, False,
+    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0, 1, False,
     XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
     &(unsigned long) {None}, &prop) != Success)
         return True;
@@ -379,7 +379,7 @@ int get_state(const Window w) {
     int state = -1;
     unsigned char *prop;
     unsigned long nitems;
-    if (XGetWindowProperty(d, w, wm_atoms[State], 0L, 2L, False, wm_atoms[State],
+    if (XGetWindowProperty(d, w, wm_atoms[State], 0, 2, False, wm_atoms[State],
     &(Atom) {None}, &(int) {None}, &nitems, &(unsigned long) {None},
     (unsigned char **) &prop) == Success) {
         if (nitems > 0)
