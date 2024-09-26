@@ -33,6 +33,7 @@ enum {
     WMWindowTypeDialog,
     WMWindowTypeNormal,
     WMWindowTypeSplash,
+    WMWindowTypeUtility,
     Workarea,
     Net_N
 };
@@ -537,6 +538,7 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[WMWindowTypeDialog] = "_NET_WM_WINDOW_TYPE_DIALOG";
     net_atom_names[WMWindowTypeNormal] = "_NET_WM_WINDOW_TYPE_NORMAL";
     net_atom_names[WMWindowTypeSplash] = "_NET_WM_WINDOW_TYPE_SPLASH";
+    net_atom_names[WMWindowTypeUtility] = "_NET_WM_WINDOW_TYPE_UTILITY";
     XInternAtoms(d, net_atom_names, Net_N, False, net_atoms);
     // Indicate EWMH-Compliance
     const char wm_name[] = "xswm";
