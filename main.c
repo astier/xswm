@@ -77,7 +77,7 @@ static void quit(void);
 // Window-Management
 static Bool is_fixed(Window);
 static Bool is_normal(Window);
-static Bool is_floating(const Client *c);
+static Bool is_floating(const Client *);
 static Bool send_protocol(Window, Atom);
 static void delete(Window);
 static void focus(Window);
@@ -86,7 +86,7 @@ static int  get_state(Window);
 static void set_state(Window, long);
 static void set_frame_extents(Window);
 static void set_wm_state(const Client *);
-static void send_configure_event(const Client *c);
+static void send_configure_event(const Client *);
 
 // X-Management
 static int xerror(Display *, XErrorEvent *);
