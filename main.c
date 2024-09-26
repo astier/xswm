@@ -20,8 +20,6 @@ enum {
     RequestFrameExtents,
     Supported,
     SupportingWMCheck,
-    WMActionClose,
-    WMAllowedActions,
     WMDesktop,
     WMFullPlacement,
     WMName,
@@ -185,8 +183,6 @@ void map_request(const Window w) {
     update_client_list(w, True);
     update_client_list_stacking();
     // Configure
-    XChangeProperty(d, w, net_atoms[WMAllowedActions], XA_ATOM, 32,
-        PropModeReplace, (unsigned char *) (Atom []) {net_atoms[WMActionClose]}, 1);
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
@@ -488,6 +484,7 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[ActiveWindow] = "_NET_ACTIVE_WINDOW";
     net_atom_names[ClientList] = "_NET_CLIENT_LIST";
     net_atom_names[ClientListStacking] = "_NET_CLIENT_LIST_STACKING";
+    net_atom_names[CloseWindow] = "_NET_CLOSE_WINDOW";
     net_atom_names[FrameExtents] = "_NET_FRAME_EXTENTS";
     net_atom_names[RequestFrameExtents] = "_NET_REQUEST_FRAME_EXTENTS";
     net_atom_names[Supported] = "_NET_SUPPORTED";
@@ -495,10 +492,6 @@ int main(const int argc, const char *argv[]) {
     net_atom_names[WMFullPlacement] = "_NET_WM_FULL_PLACEMENT";
     net_atom_names[WMName] = "_NET_WM_NAME";
     net_atom_names[Workarea] = "_NET_WORKAREA";
-    // Actions
-    net_atom_names[CloseWindow] = "_NET_CLOSE_WINDOW";
-    net_atom_names[WMActionClose] = "_NET_WM_ACTION_CLOSE";
-    net_atom_names[WMAllowedActions] = "_NET_WM_ALLOWED_ACTIONS";
     // Desktops
     net_atom_names[CurrentDesktop] = "_NET_CURRENT_DESKTOP";
     net_atom_names[DesktopGeometry] = "_NET_DESKTOP_GEOMETRY";
