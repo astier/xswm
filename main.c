@@ -377,15 +377,14 @@ void resize(Client *c) {
 
 int get_state(const Window w) {
     int state = -1;
-    unsigned char *prop;
+    unsigned char *prop = NULL;
     unsigned long nitems;
     if (XGetWindowProperty(d, w, wm_atoms[State], 0, 2, False, wm_atoms[State],
     &(Atom) {None}, &(int) {None}, &nitems, &(unsigned long) {None},
-    (unsigned char **) &prop) == Success) {
-        if (nitems > 0)
-            state = *(int *) prop;
-        XFree(prop);
-    }
+    (unsigned char **) &prop) != Success || !prop || !nitems)
+        return state;
+    state = *(int *) prop;
+    XFree(prop);
     return state;
 }
 
