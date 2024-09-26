@@ -14,7 +14,9 @@ minimal and performant (\~520 SLOC). No built-in:
 
 Just a window-manager. Tries to be
 [ICCCM](https://www.x.org/releases/current/doc/xorg-docs/icccm/icccm.html) and
-[EWMH](https://specifications.freedesktop.org/wm-spec/latest/) compliant.
+[EWMH](https://specifications.freedesktop.org/wm-spec/latest/) compliant
+insofar it makes sense and is necessary to make applications and windows work
+properly.
 
 ## Dependencies
 
