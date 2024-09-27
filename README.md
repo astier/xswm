@@ -3,7 +3,7 @@
 [xswm](https://github.com/astier/xswm) is a minimal stacking and
 non-reparenting window-manager for X with only one task. Open every window
 maximized. Zero configuration required. Due to its limited scope it is very
-minimal and performant (\~520 SLOC). No built-in:
+minimal and performant (\~500 SLOC). No built-in:
 
 - Hotkeys
 - Notifications
@@ -24,8 +24,16 @@ properly.
 
 ## Installation
 
+Installs by default under `/usr/local/bin`
+
 ```sh
 make install
+```
+
+To install somewhere else set `PREFIX` to the preferred installation-directory.
+
+```sh
+make install PREFIX=/some/where/else
 ```
 
 ## Configuration
@@ -44,7 +52,7 @@ supported:
 ## Recommended Programs
 
 Since xswm is just a window-manager it should be used in combination with other
-programs to make it usable. Some recommendations are:
+programs. Some recommendations are:
 
 - Hotkey-Daemon like [sxhkd](https://github.com/baskerville/sxhkd)
 - Application-Launcher like [dmenu](https://tools.suckless.org/dmenu/)
