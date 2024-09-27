@@ -44,7 +44,7 @@ enum {
 typedef struct Client {
     const Window w;
     Bool fixed, normal;
-    int x_request, y_request, width_request, height_request;
+    int width_request, height_request;
     int x, y, width, height;
     struct Client *next;
 } Client;
@@ -143,11 +143,9 @@ void configure_request(const XConfigureRequestEvent *e) {
     const Window w = e->window;
     const unsigned long value_mask = e->value_mask;
     if ((c = get_client(w))) {
-        if (value_mask & CWX) c->x_request = e->x;
-        if (value_mask & CWY) c->y_request = e->y;
         if (value_mask & CWWidth) c->width_request = e->width;
         if (value_mask & CWHeight) c->height_request = e->height;
-        if (value_mask & (CWX | CWY | CWWidth | CWHeight) && is_floating(c))
+        if (value_mask & (CWWidth | CWHeight) && is_floating(c))
             resize(c);
         send_configure_event(c);
     } else XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
@@ -178,7 +176,7 @@ void map_request(const Window w) {
         &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
     memcpy(head = malloc(sizeof(Client)), &(Client) {w,
-        is_fixed(w), is_normal(w), x, y, (int) width, (int) height,
+        is_fixed(w), is_normal(w), (int) width, (int) height,
         x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     update_client_list(w, True);
