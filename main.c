@@ -242,7 +242,8 @@ void property_notify(const XPropertyEvent *e) {
         else if (!strcmp(cmd, "close")) close();
         else if (!strcmp(cmd, "quit"))  quit();
         XFree(p.value);
-    } else if ((c = get_client(w))) {
+    } else if ((c = get_client(w)) && (property == XA_WM_NORMAL_HINTS
+            || property == net_atoms[WMWindowType])) {
         Bool floating_old = is_floating(c);
         if (property == XA_WM_NORMAL_HINTS)
             c->fixed = is_fixed(w);
