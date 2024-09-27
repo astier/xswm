@@ -171,8 +171,9 @@ void map_request(const Window w) {
     if (get_client(w))
         return;
     // Get geometry
-    int x = -bw, y = -bw;
-    unsigned int width = (unsigned int) sw, height = (unsigned int) sh;
+    int x = 0, y = 0;
+    unsigned int width  = (unsigned int) sw;
+    unsigned int height = (unsigned int) sh;
     XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
         &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
