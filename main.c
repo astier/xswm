@@ -342,24 +342,22 @@ void focus(const Window w) {
 }
 
 void resize(Client *c) {
-    int x = -bw, y = -bw, width = sw, height = sh;
+    c->x = -bw, c->y = -bw, c->width = sw, c->height = sh;
     if (is_floating(c)) {
         // Center if smaller than screen
         const int true_width = c->width_request + bw * 2;
         if (true_width < sw) {
-            x = (sw - true_width) / 2;
-            width = c->width_request;
+            c->x = (sw - true_width) / 2;
+            c->width = c->width_request;
         }
         const int true_height = c->height_request + bw * 2;
         if (true_height < sh) {
-            y = (sh - true_height) / 2;
-            height = c->height_request;
+            c->y = (sh - true_height) / 2;
+            c->height = c->height_request;
         }
     }
-    if (x == c->x && y == c->y && width == c->width && height == c->height)
-        return;
-    c->x = x, c->y = y, c->width = width, c->height = height;
-    XMoveResizeWindow(d, c->w, x, y, (unsigned int) width, (unsigned int) height);
+    XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
+        (unsigned int) c->height);
 }
 
 int get_state(const Window w) {
