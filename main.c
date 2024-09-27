@@ -147,7 +147,7 @@ void configure_request(const XConfigureRequestEvent *e) {
         if (value_mask & CWHeight) c->height_request = e->height;
         if (value_mask & (CWWidth | CWHeight) && is_floating(c))
             resize(c);
-        send_configure_event(c);
+        else send_configure_event(c);
     } else XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
         .x = e->x,
         .y = e->y,
@@ -190,7 +190,6 @@ void map_request(const Window w) {
     XSetWindowBorderWidth(d, w, (unsigned int) bw);
     set_frame_extents(w);
     resize(head);
-    send_configure_event(head);
     // Map and focus
     set_state(w, NormalState);
     XMapWindow(d, w);
@@ -358,6 +357,8 @@ void resize(Client *c) {
     }
     XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
         (unsigned int) c->height);
+    send_configure_event(c);
+    XSync(d, False);
 }
 
 int get_state(const Window w) {
