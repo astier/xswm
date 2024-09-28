@@ -231,6 +231,15 @@ void unmap_notify(const XUnmapEvent *e) {
     Client *c = get_client(w);
     if (!c)
         return;
+    // Handle window
+    XGrabServer(d); // Avoid race-conditions
+    XSelectInput(d, w, NoEventMask);
+    XUngrabButton(d, AnyButton, AnyModifier, w);
+    XDeleteProperty(d, w, net_atoms[WMDesktop]);
+    set_state(w, WithdrawnState);
+    XSync(d, False);
+    XUngrabServer(d);
+    // Update list
     if (c != head)
         get_parent(c)->next = c->next;
     else if (clients_n == 1) {
@@ -245,8 +254,6 @@ void unmap_notify(const XUnmapEvent *e) {
     clients_n--;
     update_client_list(w, False);
     update_client_list_stacking();
-    set_state(w, WithdrawnState);
-    XDeleteProperty(d, w, net_atoms[WMDesktop]);
 }
 
 Client * get_client(const Window w) {
