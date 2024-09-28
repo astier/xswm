@@ -231,14 +231,13 @@ void unmap_notify(const XUnmapEvent *e) {
     Client *c = get_client(w);
     if (!c)
         return;
-    if (clients_n == 1)
-        XChangeProperty(d, r, net_atoms[ActiveWindow],
-            XA_WINDOW, 32, PropModeReplace, None, 0);
     if (c != head)
         get_parent(c)->next = c->next;
-    else if (!head->next)
+    else if (clients_n == 1) {
+        XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW, 32,
+            PropModeReplace, None, 0);
         head = NULL;
-    else {
+    } else {
         head = head->next;
         focus(head->w);
     }
