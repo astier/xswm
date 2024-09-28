@@ -62,7 +62,6 @@ static void unmap_notify(const XUnmapEvent *);
 // List-Functions
 static Client * get_client(Window);
 static Client * get_parent(const Client *);
-static void pop(Window);
 
 // Remote-Commands
 static void close(void);
@@ -70,24 +69,27 @@ static void last(void);
 static void quit(void);
 
 // Window-Management
-static Bool is_fixed(Window);
-static Bool is_normal(Window);
-static Bool is_floating(const Client *);
 static Bool send_protocol(Window, Atom);
 static void delete(Window);
 static void focus(Window);
+static void pop(Window);
 static void resize(Client *);
+static void send_configure_event(const Client *);
+static void update_client_list(Window, Bool);
+static void update_client_list_stacking(void);
+
+// Window-State
+static Bool is_fixed(Window);
+static Bool is_normal(Window);
+static Bool is_floating(const Client *);
 static int  get_state(Window);
 static void set_state(Window, long);
 static void set_frame_extents(Window);
-static void send_configure_event(const Client *);
 
 // X-Management
 static int xerror(Display *, XErrorEvent *);
 static void set_desktop_geometry(void);
 static void set_workarea(void);
-static void update_client_list(Window, Bool);
-static void update_client_list_stacking(void);
 
 // Atoms
 static Atom net_atoms[Net_N];
@@ -262,50 +264,11 @@ Client * get_parent(const Client *c) {
     return p;
 }
 
-void pop(const Window w) {
-    Client *c = get_client(w);
-    if (!c || head == c)
-        return;
-    get_parent(c)->next = c->next;
-    c->next = head;
-    head = c;
-    focus(w);
-    XRaiseWindow(d, w);
-    update_client_list_stacking();
-}
-
 void close(void) { if (clients_n > 0) delete(head->w); }
 
 void last(void) { if (clients_n > 1) pop(head->next->w); }
 
 void quit(void) { running = False; }
-
-Bool is_fixed(const Window w) {
-    XSizeHints hints;
-    if (XGetWMNormalHints(d, w, &hints, &(long) {None})
-    && (hints.flags & PMinSize) && (hints.flags & PMaxSize)
-    && hints.min_width  == hints.max_width
-    && hints.min_height == hints.max_height)
-        return True;
-    return False;
-}
-
-Bool is_normal(const Window w) {
-    unsigned char *prop = NULL;
-    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0, 1, False,
-    XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
-    &(unsigned long) {None}, &prop) != Success)
-        return True;
-    Bool normal = True;
-    if (prop) {
-        normal = *(Atom *) prop == net_atoms[WMWindowTypeNormal] ? True : False;
-        XFree(prop);
-    } else if (XGetTransientForHint(d, w, &(Window) {None}))
-        normal = False;
-    return normal;
-}
-
-Bool is_floating(const Client *c) { return c->fixed || !c->normal; }
 
 Bool send_protocol(const Window w, const Atom protocol) {
     Atom *protocols;
@@ -340,6 +303,18 @@ void focus(const Window w) {
     send_protocol(w, wm_atoms[TakeFocus]);
 }
 
+void pop(const Window w) {
+    Client *c = get_client(w);
+    if (!c || head == c)
+        return;
+    get_parent(c)->next = c->next;
+    c->next = head;
+    head = c;
+    focus(w);
+    XRaiseWindow(d, w);
+    update_client_list_stacking();
+}
+
 void resize(Client *c) {
     c->x = -bw, c->y = -bw, c->width = sw, c->height = sh;
     if (is_floating(c)) {
@@ -361,29 +336,6 @@ void resize(Client *c) {
     XSync(d, False);
 }
 
-int get_state(const Window w) {
-    int state = -1;
-    unsigned char *prop = NULL;
-    unsigned long nitems;
-    if (XGetWindowProperty(d, w, wm_atoms[State], 0, 2, False, wm_atoms[State],
-    &(Atom) {None}, &(int) {None}, &nitems, &(unsigned long) {None},
-    (unsigned char **) &prop) != Success || !prop || !nitems)
-        return state;
-    state = *(int *) prop;
-    XFree(prop);
-    return state;
-}
-
-void set_state(const Window w, const long state) {
-    XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
-        PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
-}
-
-void set_frame_extents(const Window w) {
-    XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
-}
-
 void send_configure_event(const Client *c) {
     const Window w = c->w;
     XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
@@ -399,18 +351,6 @@ void send_configure_event(const Client *c) {
         .above = None,
         .override_redirect = False,
     });
-}
-
-int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
-
-void set_desktop_geometry(void) {
-    XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
-}
-
-void set_workarea(void) {
-    XChangeProperty(d, r, net_atoms[Workarea], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {0, 0, sw, sh}, 4);
 }
 
 void update_client_list(const Window w, const Bool add) {
@@ -446,6 +386,68 @@ void update_client_list_stacking(void) {
         clients[i--] = c->w;
     XChangeProperty(d, r, net_atoms[ClientListStacking], XA_WINDOW, 32,
         PropModeReplace, (unsigned char *) clients, clients_n);
+}
+
+Bool is_fixed(const Window w) {
+    XSizeHints hints;
+    if (XGetWMNormalHints(d, w, &hints, &(long) {None})
+    && (hints.flags & PMinSize) && (hints.flags & PMaxSize)
+    && hints.min_width  == hints.max_width
+    && hints.min_height == hints.max_height)
+        return True;
+    return False;
+}
+
+Bool is_normal(const Window w) {
+    unsigned char *prop = NULL;
+    if (XGetWindowProperty(d, w, net_atoms[WMWindowType], 0, 1, False,
+    XA_ATOM, &(Atom) {None}, &(int) {None}, &(unsigned long) {None},
+    &(unsigned long) {None}, &prop) != Success)
+        return True;
+    Bool normal = True;
+    if (prop) {
+        normal = *(Atom *) prop == net_atoms[WMWindowTypeNormal] ? True : False;
+        XFree(prop);
+    } else if (XGetTransientForHint(d, w, &(Window) {None}))
+        normal = False;
+    return normal;
+}
+
+Bool is_floating(const Client *c) { return c->fixed || !c->normal; }
+
+int get_state(const Window w) {
+    int state = -1;
+    unsigned char *prop = NULL;
+    unsigned long nitems;
+    if (XGetWindowProperty(d, w, wm_atoms[State], 0, 2, False, wm_atoms[State],
+    &(Atom) {None}, &(int) {None}, &nitems, &(unsigned long) {None},
+    (unsigned char **) &prop) != Success || !prop || !nitems)
+        return state;
+    state = *(int *) prop;
+    XFree(prop);
+    return state;
+}
+
+void set_state(const Window w, const long state) {
+    XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
+        PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
+}
+
+void set_frame_extents(const Window w) {
+    XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
+}
+
+int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
+
+void set_desktop_geometry(void) {
+    XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
+}
+
+void set_workarea(void) {
+    XChangeProperty(d, r, net_atoms[Workarea], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {0, 0, sw, sh}, 4);
 }
 
 int main(const int argc, const char *argv[]) {
