@@ -75,7 +75,7 @@ static void focus(Window);
 static void pop(Window);
 static void resize(Client *);
 static void send_configure_event(const Client *);
-static void update_client_list(Window, Bool);
+static void update_client_list(Window);
 static void update_client_list_stacking(void);
 
 // Window-State
@@ -181,8 +181,10 @@ void map_request(const Window w) {
         is_fixed(w), is_normal(w), (int) width, (int) height,
         x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
-    update_client_list(w, True);
-    update_client_list_stacking();
+    XChangeProperty(d, r, net_atoms[ClientList], XA_WINDOW, 32,
+        PropModeAppend, (unsigned char *) &w, 1);
+    XChangeProperty(d, r, net_atoms[ClientListStacking], XA_WINDOW, 32,
+        PropModeAppend, (unsigned char *) &w, 1);
     // Configure
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
@@ -252,7 +254,7 @@ void unmap_notify(const XUnmapEvent *e) {
     }
     free(c);
     clients_n--;
-    update_client_list(w, False);
+    update_client_list(w);
     update_client_list_stacking();
 }
 
@@ -359,12 +361,7 @@ void send_configure_event(const Client *c) {
     });
 }
 
-void update_client_list(const Window w, const Bool add) {
-    if (add) {
-        XChangeProperty(d, r, net_atoms[ClientList], XA_WINDOW, 32,
-            PropModeAppend, (unsigned char *) &w, 1);
-        return;
-    }
+void update_client_list(const Window w) {
     // Get _NET_CLIENT_LIST
     unsigned long nitems;
     unsigned char *prop = NULL;
