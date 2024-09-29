@@ -210,7 +210,8 @@ void property_notify(const XPropertyEvent *e) {
         if (property != XA_WM_CMD)
             return;
         XTextProperty p;
-        XGetTextProperty(d, r, &p, XA_WM_CMD);
+        if (!XGetTextProperty(d, r, &p, XA_WM_CMD) || !p.value)
+            return;
         const int cmd_size = 8;
         char cmd[cmd_size];
         strncpy(cmd, (char *) p.value, cmd_size - 1);
