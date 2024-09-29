@@ -1,9 +1,9 @@
-#include <X11/Xatom.h>
-#include <X11/Xutil.h>
-
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
 
 // EWMH-Atoms
 enum {
