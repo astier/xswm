@@ -87,10 +87,8 @@ static int  get_state(Window);
 static void set_state(Window, long);
 static void set_frame_extents(Window);
 
-// X-Management
+// X-Error-Handler
 static int xerror(Display *, XErrorEvent *);
-static void set_desktop_geometry(void);
-static void set_workarea(void);
 
 // Atoms
 static Atom net_atoms[Net_N];
@@ -135,8 +133,10 @@ void configure_notify(const XConfigureEvent *e) {
         return;
     sw = width;
     sh = height;
-    set_workarea();
-    set_desktop_geometry();
+    XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
+    XChangeProperty(d, r, net_atoms[Workarea], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {0, 0, sw, sh}, 4);
     for (Client *c = head; c; c = c->next)
         resize(c);
 }
@@ -471,16 +471,6 @@ void set_frame_extents(const Window w) {
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
 
-void set_desktop_geometry(void) {
-    XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
-}
-
-void set_workarea(void) {
-    XChangeProperty(d, r, net_atoms[Workarea], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {0, 0, sw, sh}, 4);
-}
-
 int main(const int argc, const char *argv[]) {
     if (!(d = XOpenDisplay(NULL)))
         return EXIT_FAILURE;
@@ -559,6 +549,8 @@ int main(const int argc, const char *argv[]) {
         PropModeReplace, None, 0);
     XChangeProperty(d, r, net_atoms[CurrentDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {0}, 1);
+    XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
     XChangeProperty(d, r, net_atoms[DesktopNames], utf8string, 8,
         PropModeReplace, (unsigned char *) "", 1);
     XChangeProperty(d, r, net_atoms[DesktopViewport], XA_CARDINAL, 32,
@@ -567,8 +559,8 @@ int main(const int argc, const char *argv[]) {
         PropModeReplace, (unsigned char *) (long []) {1}, 1);
     XChangeProperty(d, r, net_atoms[WMName], utf8string, 8,
         PropModeReplace, (unsigned char *) &wm_name, wm_name_len);
-    set_desktop_geometry();
-    set_workarea();
+    XChangeProperty(d, r, net_atoms[Workarea], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {0, 0, sw, sh}, 4);
     // WM configuration
     XSelectInput(d, r, SubstructureRedirectMask | SubstructureNotifyMask
         | StructureNotifyMask | PropertyChangeMask);
