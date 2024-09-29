@@ -211,8 +211,10 @@ void property_notify(const XPropertyEvent *e) {
             return;
         XTextProperty p;
         XGetTextProperty(d, r, &p, XA_WM_CMD);
-        char cmd[16];
-        strcpy(cmd, (char *) p.value);
+        const int cmd_size = 8;
+        char cmd[cmd_size];
+        strncpy(cmd, (char *) p.value, cmd_size - 1);
+        cmd[cmd_size - 1] = '\0';
         if      (!strcmp(cmd, "last"))  last();
         else if (!strcmp(cmd, "close")) close();
         else if (!strcmp(cmd, "quit"))  quit();
