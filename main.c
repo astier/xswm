@@ -96,7 +96,7 @@ static Atom wm_atoms[WM_N];
 static Atom XA_WM_CMD;
 
 // Geometry
-static int bw = 1; // border-width
+static const int BORDER_WIDTH = 1;
 static int sw, sh; // screen-width and -height
 
 // Linked-List
@@ -192,7 +192,7 @@ void map_request(const Window w) {
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
         GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask | PropertyChangeMask);
-    XSetWindowBorderWidth(d, w, (unsigned int) bw);
+    XSetWindowBorderWidth(d, w, (unsigned int) BORDER_WIDTH);
     set_frame_extents(w);
     resize(head);
     // Map and focus
@@ -341,15 +341,15 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
-    c->x = c->y = -bw, c->width = sw, c->height = sh;
+    c->x = c->y = -BORDER_WIDTH, c->width = sw, c->height = sh;
     if (is_floating(c)) {
         // Center if smaller than screen
-        const int true_width = c->width_request + bw * 2;
+        const int true_width = c->width_request + BORDER_WIDTH * 2;
         if (true_width < sw) {
             c->x = (sw - true_width) / 2;
             c->width = c->width_request;
         }
-        const int true_height = c->height_request + bw * 2;
+        const int true_height = c->height_request + BORDER_WIDTH * 2;
         if (true_height < sh) {
             c->y = (sh - true_height) / 2;
             c->height = c->height_request;
@@ -372,7 +372,7 @@ void send_configure_event(const Client *c) {
         .y = c->y,
         .width = c->width,
         .height = c->height,
-        .border_width = bw,
+        .border_width = BORDER_WIDTH,
         .above = None,
         .override_redirect = False,
     });
@@ -466,7 +466,8 @@ void set_state(const Window w, const long state) {
 
 void set_frame_extents(const Window w) {
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {bw, bw, bw, bw}, 4);
+        PropModeReplace, (unsigned char *) (long []) {BORDER_WIDTH,
+        BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH}, 4);
 }
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
