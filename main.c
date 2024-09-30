@@ -592,10 +592,21 @@ int main(const int argc, const char *argv[]) {
     unsigned int windows_n;
     if (XQueryTree(d, r, &(Window) {None}, &(Window) {None}, &windows, &windows_n)
     && windows) {
+        // Non-transient windows
         for (unsigned int i = 0; i < windows_n; i++) {
             XWindowAttributes wa;
             const Window w = windows[i];
             if (XGetWindowAttributes(d, w, &wa) && !wa.override_redirect
+            && !XGetTransientForHint(d, w, &(Window) {None})
+            && (wa.map_state == IsViewable || get_state(w) == IconicState))
+                map_request(w);
+        }
+        // Transient windows
+        for (unsigned int i = 0; i < windows_n; i++) {
+            XWindowAttributes wa;
+            const Window w = windows[i];
+            if (XGetWindowAttributes(d, w, &wa)
+            && XGetTransientForHint(d, w, &(Window) {None})
             && (wa.map_state == IsViewable || get_state(w) == IconicState))
                 map_request(w);
         }
