@@ -415,10 +415,20 @@ void update_client_list_stacking(void) {
 
 Bool is_fixed(const Window w) {
     XSizeHints hints;
-    if (XGetWMNormalHints(d, w, &hints, &(long) {None})
-    && (hints.flags & PMinSize) && (hints.flags & PMaxSize)
-    && hints.min_width  == hints.max_width
-    && hints.min_height == hints.max_height)
+    if (!XGetWMNormalHints(d, w, &hints, &(long) {None}))
+        return False;
+    int min_width, min_height;
+    if (hints.flags & PMinSize) {
+        min_width = hints.min_width;
+        min_height = hints.min_height;
+    } else if (hints.flags & PBaseSize) {
+        min_width = hints.base_width;
+        min_height = hints.base_height;
+    } else
+        return False;
+    if ((hints.flags & PMaxSize)
+            && min_width  == hints.max_width
+            && min_height == hints.max_height)
         return True;
     return False;
 }
