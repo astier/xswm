@@ -590,7 +590,8 @@ int main(const int argc, const char *argv[]) {
     // Scan for windows which started before xswm
     Window *windows = NULL;
     unsigned int windows_n;
-    if (XQueryTree(d, r, &(Window) {None}, &(Window) {None}, &windows, &windows_n)) {
+    if (XQueryTree(d, r, &(Window) {None}, &(Window) {None}, &windows, &windows_n)
+    && windows) {
         for (unsigned int i = 0; i < windows_n; i++) {
             XWindowAttributes wa;
             const Window w = windows[i];
