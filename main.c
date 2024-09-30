@@ -478,11 +478,11 @@ int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
 int main(const int argc, const char *argv[]) {
     if (!(d = XOpenDisplay(NULL)))
         return EXIT_FAILURE;
-    // Remote-Control by setting the XSWM_CMD property on the root-window
+    // Remote-Control by setting the _XSWM_CMD property on the root-window
     // and catching it with property_notify()
     // Check property_notify() to see which commands are supported
     r = XDefaultRootWindow(d);
-    XA_WM_CMD = XInternAtom(d, "XSWM_CMD", False);
+    XA_WM_CMD = XInternAtom(d, "_XSWM_CMD", False);
     if (argc > 1) {
         XChangeProperty(d, r, XA_WM_CMD, XA_STRING, 8,
             PropModeReplace, (unsigned char *) argv[1], (int) strlen(argv[1]));
