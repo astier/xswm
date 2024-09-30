@@ -476,8 +476,10 @@ void set_frame_extents(const Window w) {
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
 
 int main(const int argc, const char *argv[]) {
-    if (!(d = XOpenDisplay(NULL)))
+    if (!(d = XOpenDisplay(NULL))) {
+        fprintf(stderr, "Error: Unable to open display.\n");
         return EXIT_FAILURE;
+    }
     // Remote-Control by setting the _XSWM_CMD property on the root-window
     // and catching it with property_notify()
     // Check property_notify() to see which commands are supported
