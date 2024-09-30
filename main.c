@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -89,6 +90,7 @@ static void set_frame_extents(Window);
 
 // X-Error-Handler
 static int xerror(Display *, XErrorEvent *);
+static int xerror_start(Display *, XErrorEvent *);
 
 // Atoms
 static Atom net_atoms[Net_N];
@@ -475,6 +477,15 @@ void set_frame_extents(const Window w) {
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
 
+int xerror_start(Display *dpy, XErrorEvent *e) {
+    (void) dpy;
+    if (e->error_code == BadAccess) {
+        fprintf(stderr, "Error: Another window manager is already running.\n");
+        exit(EXIT_FAILURE);
+    }
+    return -1;
+}
+
 int main(const int argc, const char *argv[]) {
     if (!(d = XOpenDisplay(NULL))) {
         fprintf(stderr, "Error: Unable to open display.\n");
@@ -491,10 +502,14 @@ int main(const int argc, const char *argv[]) {
         XCloseDisplay(d);
         return EXIT_SUCCESS;
     }
+    // Check if another window-manager is already running
+    XSetErrorHandler(xerror_start);
+    XSelectInput(d, r, SubstructureRedirectMask);
+    XSync(d, False);
+    XSetErrorHandler(xerror);
+    XSync(d, False);
     // Handle signals
     signal(SIGCHLD, SIG_IGN);
-    // Fixes libreoffice-recovery-crash
-    XSetErrorHandler(xerror);
     // Variables
     const int s = XDefaultScreen(d);
     sh = XDisplayHeight(d, s);
