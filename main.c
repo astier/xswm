@@ -44,7 +44,7 @@ enum {
 
 typedef struct Client {
     const Window w;
-    Bool fixed, normal, input;
+    Bool fixed, normal;
     int width_request, height_request;
     int x, y, width, height;
     struct Client *next;
@@ -72,7 +72,7 @@ static void quit(void);
 // Window-Management
 static Bool send_protocol(Window, Atom);
 static void delete(Window);
-static void focus(const Client *);
+static void focus(Window);
 static void pop(Window);
 static void resize(Client *);
 static void send_configure_event(const Client *);
@@ -83,7 +83,6 @@ static void update_client_list_stacking(void);
 static Bool is_fixed(Window);
 static Bool is_normal(Window);
 static Bool is_floating(const Client *);
-static Bool is_focusable(Window);
 static int  get_state(Window);
 static void set_state(Window, long);
 static void set_frame_extents(Window);
@@ -167,7 +166,7 @@ void configure_request(const XConfigureRequestEvent *e) {
 // Prevent bad clients from stealing focus
 void focus_in(const XFocusInEvent *e) {
     if (head && head->w != e->window)
-        focus(head);
+        focus(head->w);
 }
 
 void map_request(const Window w) {
@@ -181,8 +180,8 @@ void map_request(const Window w) {
         &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
     memcpy(head = malloc(sizeof(Client)), &(Client) {w,
-        is_fixed(w), is_normal(w), is_focusable(w), (int) width,
-        (int) height, x, y, (int) width, (int) height, head}, sizeof(Client));
+        is_fixed(w), is_normal(w), (int) width, (int) height,
+        x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     XChangeProperty(d, r, net_atoms[ClientList], XA_WINDOW, 32,
         PropModeAppend, (unsigned char *) &w, 1);
@@ -200,7 +199,7 @@ void map_request(const Window w) {
     // Map and focus
     set_state(w, NormalState);
     XMapWindow(d, w);
-    focus(head);
+    focus(w);
 }
 
 void property_notify(const XPropertyEvent *e) {
@@ -222,22 +221,15 @@ void property_notify(const XPropertyEvent *e) {
         else if (!strcmp(cmd, "close")) close();
         else if (!strcmp(cmd, "quit"))  quit();
         XFree(p.value);
-    } else if ((c = get_client(w))) {
-        if (property == XA_WM_NORMAL_HINTS
-        ||  property == net_atoms[WMWindowType]) {
-            Bool floating_old = is_floating(c);
-            if (property == XA_WM_NORMAL_HINTS)
-                c->fixed = is_fixed(w);
-            else if (property == net_atoms[WMWindowType])
-                c->normal = is_normal(w);
-            if (floating_old != is_floating(c))
-                resize(c);
-        } else if (property == XA_WM_HINTS) {
-            const Bool input_old = c->input;
-            c->input = is_focusable(c->w);
-            if (input_old != c->input && c == head)
-                focus(c);
-        }
+    } else if ((c = get_client(w)) && (property == XA_WM_NORMAL_HINTS
+            || property == net_atoms[WMWindowType])) {
+        Bool floating_old = is_floating(c);
+        if (property == XA_WM_NORMAL_HINTS)
+            c->fixed = is_fixed(w);
+        else if (property == net_atoms[WMWindowType])
+            c->normal = is_normal(w);
+        if (floating_old != is_floating(c))
+            resize(c);
     }
 }
 
@@ -263,7 +255,7 @@ void unmap_notify(const XUnmapEvent *e) {
         head = NULL;
     } else {
         head = head->next;
-        focus(head);
+        focus(head->w);
     }
     free(c);
     clients_n--;
@@ -322,12 +314,8 @@ void delete(const Window w) {
     XUngrabServer(d);
 }
 
-void focus(const Client *c) {
-    const Window w = c->w;
-    if (c->input)
-        XSetInputFocus(d, w, RevertToPointerRoot, CurrentTime);
-    else
-        XSetInputFocus(d, r, RevertToPointerRoot, CurrentTime);
+void focus(const Window w) {
+    XSetInputFocus(d, w, RevertToPointerRoot, CurrentTime);
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
     send_protocol(w, wm_atoms[TakeFocus]);
@@ -340,7 +328,7 @@ void pop(const Window w) {
     get_parent(c)->next = c->next;
     c->next = head;
     head = c;
-    focus(c);
+    focus(w);
     XRaiseWindow(d, w);
     update_client_list_stacking();
 }
@@ -449,17 +437,6 @@ Bool is_normal(const Window w) {
 }
 
 Bool is_floating(const Client *c) { return c->fixed || !c->normal; }
-
-Bool is_focusable(const Window w) {
-    Bool input = True;
-    XWMHints *hints = XGetWMHints(d, w);
-    if (hints) {
-        if (hints->flags & InputHint)
-            input = hints->input;
-        XFree(hints);
-    }
-    return input;
-}
 
 int get_state(const Window w) {
     int state = -1;
