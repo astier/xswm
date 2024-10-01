@@ -303,15 +303,7 @@ Bool send_protocol(const Window w, const Atom protocol) {
     });
 }
 
-void delete(const Window w) {
-    if (send_protocol(w, wm_atoms[DeleteWindow]))
-        return;
-    XGrabServer(d);
-    XSetCloseDownMode(d, DestroyAll);
-    XKillClient(d, w);
-    XSync(d, False);
-    XUngrabServer(d);
-}
+void delete(const Window w) { send_protocol(w, wm_atoms[DeleteWindow]); }
 
 void focus(const Window w) {
     XSetInputFocus(d, w, RevertToPointerRoot, CurrentTime);
