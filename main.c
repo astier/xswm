@@ -69,7 +69,6 @@ static void last(void);
 static void quit(void);
 
 // Window-Management
-static Bool send_protocol(Window, Atom);
 static void delete(Window);
 static void focus(Window);
 static void pop(Window);
@@ -282,18 +281,19 @@ void last(void) { if (clients_n > 1) pop(head->next->w); }
 
 void quit(void) { running = False; }
 
-Bool send_protocol(const Window w, const Atom protocol) {
+void delete(const Window w) {
+    Atom protocol = wm_atoms[DeleteWindow];
     Atom *protocols;
     int count;
     if (!XGetWMProtocols(d, w, &protocols, &count))
-        return False;
+        return;
     Bool protocol_exists = False;
     while (!protocol_exists && count--)
         protocol_exists = protocols[count] == protocol;
     XFree(protocols);
     if (!protocol_exists)
-        return False;
-    return XSendEvent(d, w, False, NoEventMask, (XEvent *) &(XClientMessageEvent) {
+        return;
+    XSendEvent(d, w, False, NoEventMask, (XEvent *) &(XClientMessageEvent) {
         .type = ClientMessage,
         .window = w,
         .message_type = wm_atoms[Protocols],
@@ -302,8 +302,6 @@ Bool send_protocol(const Window w, const Atom protocol) {
         .data.l[1] = CurrentTime,
     });
 }
-
-void delete(const Window w) { send_protocol(w, wm_atoms[DeleteWindow]); }
 
 void focus(const Window w) {
     XSetInputFocus(d, w, RevertToPointerRoot, CurrentTime);
