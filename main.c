@@ -38,7 +38,6 @@ enum {
     DeleteWindow,
     Protocols,
     State,
-    TakeFocus,
     WM_N
 };
 
@@ -318,7 +317,6 @@ void focus(const Window w) {
     XSetInputFocus(d, w, RevertToPointerRoot, CurrentTime);
     XChangeProperty(d, r, net_atoms[ActiveWindow], XA_WINDOW,
         32, PropModeReplace, (unsigned char *) &w, 1);
-    send_protocol(w, wm_atoms[TakeFocus]);
 }
 
 void pop(const Window w) {
@@ -504,7 +502,6 @@ int main(const int argc, const char *argv[]) {
     // ICCCM-Atoms
     char *wm_atom_names[WM_N];
     wm_atom_names[Protocols] = "WM_PROTOCOLS";
-    wm_atom_names[TakeFocus] = "WM_TAKE_FOCUS";
     wm_atom_names[DeleteWindow] = "WM_DELETE_WINDOW";
     wm_atom_names[State] = "WM_STATE";
     XInternAtoms(d, wm_atom_names, WM_N, False, wm_atoms);
