@@ -76,6 +76,7 @@ static void resize(Client *);
 static void send_configure_event(const Client *);
 static void update_client_list(Window);
 static void update_client_list_stacking(void);
+static void update_geometry(Client *);
 
 // Window-State
 static Bool is_fixed(Window);
@@ -322,20 +323,7 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
-    c->x = c->y = -BORDER_WIDTH, c->width = sw, c->height = sh;
-    if (is_floating(c)) {
-        // Center if smaller than screen
-        const int true_width = c->width_request + BORDER_WIDTH * 2;
-        if (true_width < sw) {
-            c->x = (sw - true_width) / 2;
-            c->width = c->width_request;
-        }
-        const int true_height = c->height_request + BORDER_WIDTH * 2;
-        if (true_height < sh) {
-            c->y = (sh - true_height) / 2;
-            c->height = c->height_request;
-        }
-    }
+    update_geometry(c);
     XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
         (unsigned int) c->height);
     send_configure_event(c);
@@ -387,6 +375,23 @@ void update_client_list_stacking(void) {
         clients[i--] = c->w;
     XChangeProperty(d, r, net_atoms[ClientListStacking], XA_WINDOW, 32,
         PropModeReplace, (unsigned char *) clients, clients_n);
+}
+
+void update_geometry(Client *c) {
+    c->x = c->y = -BORDER_WIDTH, c->width = sw, c->height = sh;
+    if (is_floating(c)) {
+        // Center if smaller than screen
+        const int true_width = c->width_request + BORDER_WIDTH * 2;
+        if (true_width < sw) {
+            c->x = (sw - true_width) / 2;
+            c->width = c->width_request;
+        }
+        const int true_height = c->height_request + BORDER_WIDTH * 2;
+        if (true_height < sh) {
+            c->y = (sh - true_height) / 2;
+            c->height = c->height_request;
+        }
+    }
 }
 
 Bool is_fixed(const Window w) {
