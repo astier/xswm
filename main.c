@@ -172,15 +172,15 @@ void map_request(const Window w) {
     if (get_client(w))
         return;
     // Get geometry
-    int x = 0, y = 0;
     unsigned int width  = (unsigned int) sw;
     unsigned int height = (unsigned int) sh;
-    XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
-        &(unsigned int) {None}, &(unsigned int) {None});
+    XGetGeometry(d, w, &(Window) {None}, &(int) {None}, &(int) {None},
+        &width, &height, &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {w,
-        is_fixed(w), is_normal(w), (int) width, (int) height,
-        x, y, (int) width, (int) height, head}, sizeof(Client));
+    memcpy(head = malloc(sizeof(Client)), &(Client) {
+        w, is_fixed(w), is_normal(w), (int) width, (int) height,
+        None, None, None, None, head}, sizeof(Client));
+    update_geometry(head);
     clients_n++;
     XChangeProperty(d, r, net_atoms[ClientList], XA_WINDOW, 32,
         PropModeAppend, (unsigned char *) &w, 1);
@@ -192,9 +192,14 @@ void map_request(const Window w) {
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
         GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask | PropertyChangeMask);
-    XSetWindowBorderWidth(d, w, (unsigned int) BORDER_WIDTH);
+    XConfigureWindow(d, w, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &(XWindowChanges) {
+        .x = head->x,
+        .y = head->y,
+        .width = head->width,
+        .height = head->height,
+        .border_width = BORDER_WIDTH,
+    });
     set_frame_extents(w);
-    resize(head);
     // Map and focus
     set_state(w, NormalState);
     XMapWindow(d, w);
