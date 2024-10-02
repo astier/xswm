@@ -82,7 +82,6 @@ static Bool is_fixed(Window);
 static Bool is_normal(Window);
 static Bool is_floating(const Client *);
 static int  get_state(Window);
-static void set_state(Window, long);
 
 // X-Error-Handler
 static int xerror(Display *, XErrorEvent *);
@@ -215,7 +214,8 @@ void map_request(const Window w) {
         .border_width = BORDER_WIDTH,
     });
     // Map and focus
-    set_state(w, NormalState);
+    XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
+        PropModeReplace, (unsigned char *) (long []) {NormalState, None}, 2);
     XMapWindow(d, w);
     focus(w);
 }
@@ -261,7 +261,8 @@ void unmap_notify(const XUnmapEvent *e) {
     XSelectInput(d, w, NoEventMask);
     XUngrabButton(d, AnyButton, AnyModifier, w);
     XDeleteProperty(d, w, net_atoms[WMDesktop]);
-    set_state(w, WithdrawnState);
+    XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
+        PropModeReplace, (unsigned char *) (long []) {WithdrawnState, None}, 2);
     XSync(d, False);
     XUngrabServer(d);
     // Update list
@@ -442,11 +443,6 @@ int get_state(const Window w) {
     state = *(int *) prop;
     XFree(prop);
     return state;
-}
-
-void set_state(const Window w, const long state) {
-    XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
-        PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
 }
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
