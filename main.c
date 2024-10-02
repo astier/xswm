@@ -187,12 +187,13 @@ void map_request(const Window w) {
     unsigned int height = (unsigned int) sh;
     XGetGeometry(d, w, &(Window) {None}, &(int) {None}, &(int) {None},
         &width, &height, &(unsigned int) {None}, &(unsigned int) {None});
-    // Initialize client and add to list
+    // Initialize client and add to linked-list
     memcpy(head = malloc(sizeof(Client)), &(Client) {
         w, is_fixed(w), is_normal(w), (int) width, (int) height,
         None, None, None, None, head}, sizeof(Client));
     update_geometry(head);
     clients_n++;
+    // Update ewmh-client-lists
     XChangeProperty(d, r, net_atoms[ClientList], XA_WINDOW, 32,
         PropModeAppend, (unsigned char *) &w, 1);
     XChangeProperty(d, r, net_atoms[ClientListStacking], XA_WINDOW, 32,
@@ -213,7 +214,7 @@ void map_request(const Window w) {
         .height = head->height,
         .border_width = BORDER_WIDTH,
     });
-    // Map and focus
+    // Map
     XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
         PropModeReplace, (unsigned char *) (long []) {NormalState, None}, 2);
     XMapWindow(d, w);
