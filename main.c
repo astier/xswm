@@ -83,7 +83,6 @@ static Bool is_normal(Window);
 static Bool is_floating(const Client *);
 static int  get_state(Window);
 static void set_state(Window, long);
-static void set_frame_extents(Window);
 
 // X-Error-Handler
 static int xerror(Display *, XErrorEvent *);
@@ -122,7 +121,9 @@ void client_message(const XClientMessageEvent *e) {
     else if (msg == net_atoms[CloseWindow])
         delete(w);
     else if (msg == net_atoms[RequestFrameExtents])
-        set_frame_extents(w);
+        XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
+            PropModeReplace, (unsigned char *) (long []) {BORDER_WIDTH,
+            BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH}, 4);
 }
 
 void configure_notify(const XConfigureEvent *e) {
@@ -198,6 +199,9 @@ void map_request(const Window w) {
     XChangeProperty(d, r, net_atoms[ClientListStacking], XA_WINDOW, 32,
         PropModeAppend, (unsigned char *) &w, 1);
     // Configure
+    XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
+        PropModeReplace, (unsigned char *) (long []) {BORDER_WIDTH,
+        BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH}, 4);
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
@@ -210,7 +214,6 @@ void map_request(const Window w) {
         .height = head->height,
         .border_width = BORDER_WIDTH,
     });
-    set_frame_extents(w);
     // Map and focus
     set_state(w, NormalState);
     XMapWindow(d, w);
@@ -444,12 +447,6 @@ int get_state(const Window w) {
 void set_state(const Window w, const long state) {
     XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
         PropModeReplace, (unsigned char *) (long []) {state, None}, 2);
-}
-
-void set_frame_extents(const Window w) {
-    XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {BORDER_WIDTH,
-        BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH}, 4);
 }
 
 int xerror(Display *dpy, XErrorEvent *e) { (void) dpy; (void) e; return 0; }
