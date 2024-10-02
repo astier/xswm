@@ -130,8 +130,7 @@ void configure_notify(const XConfigureEvent *e) {
     const int height = e->height;
     if (e->window != r || (sw == width && sh == height))
         return;
-    sw = width;
-    sh = height;
+    sw = width, sh = height;
     XChangeProperty(d, r, net_atoms[DesktopGeometry], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (long []) {sw, sh}, 2);
     XChangeProperty(d, r, net_atoms[Workarea], XA_CARDINAL, 32,
