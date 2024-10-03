@@ -73,6 +73,7 @@ static void delete(Window);
 static void focus(Window);
 static void pop(Window);
 static void resize(Client *);
+static void send_configure_event(const Client *);
 static void update_client_list(Window);
 static void update_client_list_stacking(void);
 static void update_geometry(Client *);
@@ -148,28 +149,7 @@ void configure_request(const XConfigureRequestEvent *e) {
         if (value_mask & CWHeight) c->height_request = e->height;
         if (value_mask & (CWWidth | CWHeight) && is_floating(c))
             resize(c);
-        // Adjust for requested border-width (ICCCM-compliance)
-        int x = c->x, y = c->y, border_width = BORDER_WIDTH;
-        if (value_mask & CWBorderWidth) {
-            border_width = e->border_width;
-            x = x - BORDER_WIDTH + border_width;
-            y = y - BORDER_WIDTH + border_width;
-        }
-        // Send synthetic ConfigureNotify-Event to notify client if:
-        // 1. nothing changes 2. window was moved (see ICCCM)
-        XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
-            .type = ConfigureNotify,
-            .send_event = True,
-            .display = d,
-            .event = w,
-            .window = w,
-            .x = x, .y = y,
-            .width = c->width,
-            .height = c->height,
-            .border_width = border_width,
-            .above = None,
-            .override_redirect = False,
-        });
+        else send_configure_event(c);
     } else XConfigureWindow(d, w, (unsigned int) value_mask, &(XWindowChanges) {
         .x = e->x,
         .y = e->y,
@@ -355,6 +335,26 @@ void resize(Client *c) {
     update_geometry(c);
     XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
         (unsigned int) c->height);
+    send_configure_event(c);
+    XSync(d, False);
+}
+
+void send_configure_event(const Client *c) {
+    const Window w = c->w;
+    XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
+        .type = ConfigureNotify,
+        .send_event = True,
+        .display = d,
+        .event = w,
+        .window = w,
+        .x = c->x,
+        .y = c->y,
+        .width = c->width,
+        .height = c->height,
+        .border_width = BORDER_WIDTH,
+        .above = None,
+        .override_redirect = False,
+    });
 }
 
 void update_client_list(const Window w) {
