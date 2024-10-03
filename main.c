@@ -122,8 +122,7 @@ void client_message(const XClientMessageEvent *e) {
         delete(w);
     else if (msg == net_atoms[RequestFrameExtents])
         XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
-            PropModeReplace, (unsigned char *) (long []) {BORDER_WIDTH,
-            BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH}, 4);
+            PropModeReplace, (unsigned char *) (long []) {0, 0, 0, 0}, 4);
 }
 
 void configure_notify(const XConfigureEvent *e) {
@@ -189,8 +188,7 @@ void map_request(const Window w) {
         PropModeAppend, (unsigned char *) &w, 1);
     // Configure
     XChangeProperty(d, w, net_atoms[FrameExtents], XA_CARDINAL, 32,
-        PropModeReplace, (unsigned char *) (long []) {BORDER_WIDTH,
-        BORDER_WIDTH, BORDER_WIDTH, BORDER_WIDTH}, 4);
+        PropModeReplace, (unsigned char *) (long []) {0, 0, 0, 0}, 4);
     XChangeProperty(d, w, net_atoms[WMDesktop], XA_CARDINAL, 32,
         PropModeReplace, (unsigned char *) (int []) {0}, 1);
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
