@@ -76,7 +76,6 @@ static void resize(Client *);
 static void send_configure_event(const Client *);
 static void update_client_list(Window);
 static void update_client_list_stacking(void);
-static void update_geometry(Client *);
 
 // Window-State
 static Bool is_fixed(Window);
@@ -171,15 +170,15 @@ void map_request(const Window w) {
     if (get_client(w))
         return;
     // Get geometry
+    int x = -BORDER_WIDTH, y = -BORDER_WIDTH;
     unsigned int width  = (unsigned int) sw;
     unsigned int height = (unsigned int) sh;
-    XGetGeometry(d, w, &(Window) {None}, &(int) {None}, &(int) {None},
-        &width, &height, &(unsigned int) {None}, &(unsigned int) {None});
+    XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
+        &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to linked-list
     memcpy(head = malloc(sizeof(Client)), &(Client) {
         w, is_fixed(w), is_normal(w), (int) width, (int) height,
-        None, None, None, None, head}, sizeof(Client));
-    update_geometry(head);
+        x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     // Update ewmh-client-lists
     XChangeProperty(d, r, net_atoms[ClientList], XA_WINDOW, 32,
@@ -195,13 +194,8 @@ void map_request(const Window w) {
     XGrabButton(d, AnyButton, AnyModifier, w, True, ButtonPressMask,
         GrabModeSync, GrabModeSync, None, None);
     XSelectInput(d, w, FocusChangeMask | PropertyChangeMask);
-    XConfigureWindow(d, w, CWX|CWY|CWWidth|CWHeight|CWBorderWidth, &(XWindowChanges) {
-        .x = head->x,
-        .y = head->y,
-        .width = head->width,
-        .height = head->height,
-        .border_width = BORDER_WIDTH,
-    });
+    XSetWindowBorderWidth(d, w, BORDER_WIDTH);
+    resize(head);
     // Map
     XChangeProperty(d, w, wm_atoms[State], wm_atoms[State], 32,
         PropModeReplace, (unsigned char *) (long []) {NormalState, None}, 2);
@@ -332,7 +326,20 @@ void pop(const Window w) {
 }
 
 void resize(Client *c) {
-    update_geometry(c);
+    c->x = c->y = -BORDER_WIDTH, c->width = sw, c->height = sh;
+    if (is_floating(c)) {
+        // Center if smaller than screen
+        const int true_width = c->width_request + BORDER_WIDTH * 2;
+        if (true_width < sw) {
+            c->x = (sw - true_width) / 2;
+            c->width = c->width_request;
+        }
+        const int true_height = c->height_request + BORDER_WIDTH * 2;
+        if (true_height < sh) {
+            c->y = (sh - true_height) / 2;
+            c->height = c->height_request;
+        }
+    }
     XMoveResizeWindow(d, c->w, c->x, c->y, (unsigned int) c->width,
         (unsigned int) c->height);
     send_configure_event(c);
@@ -385,23 +392,6 @@ void update_client_list_stacking(void) {
         clients[i--] = c->w;
     XChangeProperty(d, r, net_atoms[ClientListStacking], XA_WINDOW, 32,
         PropModeReplace, (unsigned char *) clients, clients_n);
-}
-
-void update_geometry(Client *c) {
-    c->x = c->y = -BORDER_WIDTH, c->width = sw, c->height = sh;
-    if (is_floating(c)) {
-        // Center if smaller than screen
-        const int true_width = c->width_request + BORDER_WIDTH * 2;
-        if (true_width < sw) {
-            c->x = (sw - true_width) / 2;
-            c->width = c->width_request;
-        }
-        const int true_height = c->height_request + BORDER_WIDTH * 2;
-        if (true_height < sh) {
-            c->y = (sh - true_height) / 2;
-            c->height = c->height_request;
-        }
-    }
 }
 
 Bool is_fixed(const Window w) {
