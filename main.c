@@ -45,6 +45,7 @@ typedef struct Client {
     const Window w;
     Bool fixed, normal;
     int width_request, height_request;
+    int border_width_request;
     int x, y, width, height;
     struct Client *next;
 } Client;
@@ -73,7 +74,7 @@ static void delete(Window);
 static void focus(Window);
 static void pop(Window);
 static void resize(Client *);
-static void send_configure_event(const Client *);
+static void send_configure_event(Client *);
 static void update_client_list(Window);
 static void update_client_list_stacking(void);
 
@@ -144,6 +145,7 @@ void configure_request(const XConfigureRequestEvent *e) {
     const Window w = e->window;
     const unsigned long value_mask = e->value_mask;
     if ((c = get_client(w))) {
+        if (value_mask & CWBorderWidth) c->border_width_request = e->border_width;
         if (value_mask & CWWidth) c->width_request = e->width;
         if (value_mask & CWHeight) c->height_request = e->height;
         if (value_mask & (CWWidth | CWHeight) && is_floating(c))
@@ -176,8 +178,8 @@ void map_request(const Window w) {
     XGetGeometry(d, w, &(Window) {None}, &x, &y, &width, &height,
         &(unsigned int) {None}, &(unsigned int) {None});
     // Initialize client and add to linked-list
-    memcpy(head = malloc(sizeof(Client)), &(Client) {
-        w, is_fixed(w), is_normal(w), (int) width, (int) height,
+    memcpy(head = malloc(sizeof(Client)), &(Client) {w, is_fixed(w),
+        is_normal(w), (int) width, (int) height, BORDER_WIDTH,
         x, y, (int) width, (int) height, head}, sizeof(Client));
     clients_n++;
     // Update ewmh-client-lists
@@ -346,7 +348,14 @@ void resize(Client *c) {
     XSync(d, False);
 }
 
-void send_configure_event(const Client *c) {
+void send_configure_event(Client *c) {
+    int x = c->x, y = c->y, border_width = BORDER_WIDTH;
+    // Adjust for requested border-width (ICCCM-compliance)
+    if (c->border_width_request != BORDER_WIDTH) {
+        border_width = c->border_width_request;
+        x = x - BORDER_WIDTH + border_width;
+        y = y - BORDER_WIDTH + border_width;
+    }
     const Window w = c->w;
     XSendEvent(d, w, False, StructureNotifyMask, (XEvent *) &(XConfigureEvent) {
         .type = ConfigureNotify,
@@ -354,14 +363,14 @@ void send_configure_event(const Client *c) {
         .display = d,
         .event = w,
         .window = w,
-        .x = c->x,
-        .y = c->y,
+        .x = x, .y = y,
         .width = c->width,
         .height = c->height,
-        .border_width = BORDER_WIDTH,
+        .border_width = border_width,
         .above = None,
         .override_redirect = False,
     });
+    c->border_width_request = BORDER_WIDTH;
 }
 
 void update_client_list(const Window w) {
